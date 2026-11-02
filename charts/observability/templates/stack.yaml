@@ -830,7 +830,7 @@
             ],
             "readinessProbe": {
               "httpGet": {
-                "path": "/healthz",
+                "path": "/readyz",
                 "port": 8081
               },
               "initialDelaySeconds": 5,
