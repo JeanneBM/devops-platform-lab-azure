@@ -4,10 +4,11 @@ param(
     [Parameter(Mandatory)][string]$Kubeconfig,
     [string]$BackupDirectory = (Join-Path $PSScriptRoot '../.backups'),
     [string]$KeyDirectory = (Join-Path ([Environment]::GetFolderPath('UserProfile')) '.devops-lab-keys'),
-    [string]$AdminSecretName = 'jenkins'
+    [string]$AdminSecretName = ''
 )
 . (Join-Path $PSScriptRoot 'JenkinsStorage.ps1')
 $kube = (Resolve-Path $Kubeconfig).Path
+if (-not $AdminSecretName) { $AdminSecretName = Get-LabJenkinsAdminSecret $kube }
 $state = Get-JenkinsState $kube
 if ($state.Replicas -ne 1) { throw 'Backup expects a running single controller.' }
 $id = [DateTime]::UtcNow.ToString('yyyyMMddHHmmss') + '-' + [guid]::NewGuid().ToString('N').Substring(0,8)

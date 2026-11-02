@@ -16,9 +16,12 @@ Invoke-LabNative 'helm' @('upgrade', '--install', 'jenkins-access',
     '--namespace', 'jenkins', '--create-namespace', '--wait', '--timeout', '2m')
 Invoke-LabNative 'helm' @('repo', 'add', 'jenkinsci', 'https://charts.jenkins.io', '--force-update')
 Invoke-LabNative 'helm' @('repo', 'update', 'jenkinsci')
+$current = Get-LabJenkinsValues $kube
+if (-not $ExistingClaim -and $current.ContainsKey('persistence') -and $current.persistence.ContainsKey('existingClaim')) { $ExistingClaim = $current.persistence.existingClaim }
+if (-not $AdminSecretName) { $AdminSecretName = Get-LabJenkinsAdminSecret $kube }
 $extra = @()
 if ($ExistingClaim) { $extra += @('--set-string', "persistence.existingClaim=$ExistingClaim") }
-if ($AdminSecretName) { $extra += @('--set-string', "controller.admin.existingSecret=$AdminSecretName", '--set', 'controller.admin.createSecret=false') }
+if ($AdminSecretName -and $AdminSecretName -ne 'jenkins') { $extra += @('--set-string', "controller.admin.existingSecret=$AdminSecretName", '--set', 'controller.admin.createSecret=false') }
 Invoke-LabNative 'helm' (@('upgrade', '--install', 'jenkins', 'jenkinsci/jenkins',
     '--version', '5.10.9', '--kubeconfig', $kube, '--namespace', 'jenkins',
     '--values', (Join-Path $script:LabRoot 'helm-values/jenkins.yaml'),

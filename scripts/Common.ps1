@@ -49,3 +49,46 @@ function Initialize-Lab {
     Invoke-LabNative 'terraform' @("-chdir=$script:InfraRoot", 'validate')
     return $resolved
 }
+
+
+function Get-LabJenkinsValues {
+    param([string]$Kube)
+    $raw = & helm list --kubeconfig $Kube --namespace jenkins --filter '^jenkins$' --output json
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect Jenkins Helm release.' }
+    if (@((($raw -join "`n") | ConvertFrom-Json)).Count -eq 0) { return @{} }
+    $raw = & helm get values jenkins --kubeconfig $Kube --namespace jenkins --output json
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect Jenkins values.' }
+    $values = ($raw -join "`n") | ConvertFrom-Json -AsHashtable
+    if ($null -eq $values) { return @{} }
+    return $values
+}
+
+function Get-LabJenkinsAdminSecret {
+    param([string]$Kube)
+    $values = Get-LabJenkinsValues $Kube
+    if ($values.ContainsKey('controller') -and $values.controller.ContainsKey('admin') -and $values.controller.admin.ContainsKey('existingSecret') -and $values.controller.admin.existingSecret) {
+        return $values.controller.admin.existingSecret
+    }
+    return 'jenkins'
+}
+
+
+function Read-LabSettings {
+    param([string]$Path)
+    $settings = @{ location = 'polandcentral'; node_size = 'Standard_D4as_v5' }
+    $raw = Get-Content -LiteralPath $Path -Raw
+    if ($Path.EndsWith('.json')) {
+        $parsed = $raw | ConvertFrom-Json -AsHashtable
+        foreach ($key in $parsed.Keys) { $settings[$key] = $parsed[$key] }
+    } else {
+        foreach ($line in ($raw -split "`n")) {
+            if ($line.Trim() -eq '' -or $line.Trim().StartsWith('#')) { continue }
+            if ($line -notmatch '^\s*([a-z_]+)\s*=\s*"([^"\r\n]+)"\s*(?:#.*)?$') {
+                throw 'Lifecycle configuration must use flat quoted string assignments, or a .tfvars.json object.'
+            }
+            $settings[$Matches[1]] = $Matches[2]
+        }
+    }
+    if (-not $settings.ContainsKey('subscription_id')) { throw 'Explicit subscription_id is required.' }
+    return $settings
+}

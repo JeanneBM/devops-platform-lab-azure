@@ -10,8 +10,8 @@ deployed Git commit. No anonymous build access or precommitted password is used;
 the upstream chart generates the administrator Secret.
 
 The four explicit plugin versions are recorded in `helm-values/jenkins.yaml`.
-The plugin installer resolves current transitive dependencies, using the upstream
-chart's latest-dependency resolution to avoid incompatible minimum-version combinations. This is not a complete transitive plugin lock or an
+The plugin installer resolves minimum compatible transitive dependencies, with
+latest-resolution disabled. This is not a complete transitive plugin lock or an
 offline/reproducible image. Record installed plugin versions before a real upgrade.
 No plugin downloads occur on dynamic agents; the controller's initial installation
 needs access to Jenkins update/download services.
@@ -131,9 +131,9 @@ tiers/minimum provisioning sizes, not just the requested 10 GiB. Add an allowanc
 the disk and longer first-boot/test runtime; the previous 6-hour estimate is not a cap.
 
 The PVC survives controller restarts, but `Stop-Lab.ps1 -Destroy` removes the whole
-environment including Jenkins data. **Automated external backup/restore is not yet
-implemented (stage 4)**. Treat this stage's jobs/configuration as disposable and
-recreated from code. Do not put irreplaceable credentials/jobs/data into this lab.
+environment including Jenkins data. Stage 4 now implements offline external backup and new-PVC recovery; stage 6 calls
+backup before normal destruction. Read those stages before relying on recovery.
+Do not put irreplaceable production credentials/jobs/data into this lab.
 Keep Terraform state until cleanup is verified.
 
 CI runs the real controller and pipeline in kind. It does not prove AKS Entra RBAC,

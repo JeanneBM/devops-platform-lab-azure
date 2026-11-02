@@ -19,6 +19,17 @@ jobs:
           echo "aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d  kind" | sha256sum --check
           sudo install -m 0755 kind /usr/local/bin/kind
           kind create cluster --name jenkins-lab-ci --config ci/kind.yaml --kubeconfig "$RUNNER_TEMP/jenkins.kubeconfig" --wait 180s
+      - name: Build and deploy the real applications for the complete lab test
+        shell: pwsh
+        run: |
+          $kube = Join-Path $env:RUNNER_TEMP 'jenkins.kubeconfig'
+          docker build -t devops-platform-lab-azure/pycalculator:ci src/python
+          if ($LASTEXITCODE -ne 0) { throw 'Python image build failed.' }
+          docker build -t devops-platform-lab-azure/g4g7singleton:ci src/java
+          if ($LASTEXITCODE -ne 0) { throw 'Java image build failed.' }
+          kind load docker-image --name jenkins-lab-ci devops-platform-lab-azure/pycalculator:ci devops-platform-lab-azure/g4g7singleton:ci
+          if ($LASTEXITCODE -ne 0) { throw 'Image load failed.' }
+          ./scripts/Deploy-Applications.ps1 -Registry devops-platform-lab-azure -ImageTag ci -Kubeconfig $kube
       - name: Install pinned Jenkins and namespace-scoped permissions
         shell: pwsh
         run: |
@@ -31,6 +42,12 @@ jobs:
         shell: pwsh
         run: |
           ./scripts/Test-JenkinsRecovery.ps1 -Kubeconfig (Join-Path $env:RUNNER_TEMP 'jenkins.kubeconfig') -SourceRef $env:GITHUB_SHA -StorageClass standard
+      - name: Verify the full lab after Jenkins recovery, including outage and alert resolution
+        shell: pwsh
+        run: |
+          $kube = Join-Path $env:RUNNER_TEMP 'jenkins.kubeconfig'
+          ./scripts/Deploy-Observability.ps1 -Kubeconfig $kube
+          ./scripts/Test-Lab.ps1 -Kubeconfig $kube -ExerciseAlerts
       - name: Diagnostics without secrets
         if: failure()
         run: |
@@ -38,6 +55,9 @@ jobs:
           kubectl --kubeconfig "$RUNNER_TEMP/jenkins.kubeconfig" get events -A --sort-by=.lastTimestamp || true
           kubectl --kubeconfig "$RUNNER_TEMP/jenkins.kubeconfig" -n jenkins logs statefulset/jenkins -c init --tail=150 || true
           kubectl --kubeconfig "$RUNNER_TEMP/jenkins.kubeconfig" -n jenkins logs statefulset/jenkins -c jenkins --tail=150 || true
+          for component in prometheus loki alloy grafana kube-state-metrics; do
+            kubectl --kubeconfig "$RUNNER_TEMP/jenkins.kubeconfig" -n observability logs deployment/$component --tail=60 || true
+          done
       - name: Remove CI cluster
         if: always()
         run: kind delete cluster --name jenkins-lab-ci

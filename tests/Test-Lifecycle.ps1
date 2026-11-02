@@ -36,6 +36,7 @@ try {
     $caught = $false
     try { & $start -ConfigFile $config -Apply } catch { $caught = $true }
     Assert-Lab $caught 'Plan failure was ignored.'
+    Assert-Lab (@($global:LabCalls | Where-Object { $_ -contains 'plan' }).Count -eq 1) 'Expected the mock plan itself to be reached.'
     Assert-Lab (@($global:LabCalls | Where-Object { $_ -contains 'apply' }).Count -eq 0) 'Failed plan was applied!'
     $global:FailLabPlan = $false
 

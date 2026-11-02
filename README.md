@@ -3,8 +3,9 @@
 An ephemeral Azure learning lab operated from a local PowerShell terminal.
 Its counterpart is [devops-platform-lab-local](https://github.com/JeanneBM/devops-platform-lab-local).
 
-**Status: Stage 3 — Jenkins/dynamic agent code prepared. No Azure deployment has been run.**
-CI checks Terraform, PowerShell and applications/Helm in a disposable kind cluster. These checks do not prove Azure
+**Status: Stages 1–6 implemented in code. No Azure deployment has been run.**
+CI checks Terraform/PowerShell, Helm applications, Jenkins dynamic builds and recovery,
+plus metrics/logs/dashboards and outage alert recovery in kind. These checks do not prove Azure
 quota, regional capacity, authentication, billing, resource creation or destruction.
 
 ## Stage 1: what this code prepares
@@ -18,7 +19,7 @@ quota, regional capacity, authentication, billing, resource creation or destruct
 | ACR | Basic, admin credentials disabled; kubelet identity receives `AcrPull` at registry scope |
 | Workload Identity | OIDC issuer and cluster support enabled; no workload identities/roles created yet |
 | Storage | Managed node OS disks plus a 10 GiB Jenkins PVC (managed-csi) |
-| Monitoring | No Log Analytics, Managed Prometheus or Managed Grafana provisioned |
+| Monitoring | Self-hosted Prometheus/Grafana/Loki/Alloy, HTTP probes and Kubernetes state; no paid managed monitoring |
 | Terraform state | Local and untracked; preserve it until successful destroy |
 
 This is a disposable learning topology. It mixes future workloads and system pods
@@ -47,8 +48,7 @@ pwsh ./scripts/Start-Lab.ps1 -Apply
 With `-Apply`, Start-Lab creates infrastructure, builds both application images locally,
 pushes them to ACR, deploys Helm releases and verifies HTTP behavior. It also installs Jenkins, runs a shared-library verification pipeline on a dynamic
 Kubernetes agent and verifies RBAC and agent cleanup. Required tools: Azure CLI, Terraform, Docker (Linux containers), PowerShell
-7.2+, kubectl, kubelogin, Git and **Helm 3**. See [stage 2](docs/stage-02.md) and
-[stage 3](docs/stage-03.md).
+7.2+, kubectl, kubelogin, Git and **Helm 3**. See [the complete lifecycle](docs/stage-06.md).
 
 Review a destruction plan, then explicitly destroy when ready:
 
@@ -57,16 +57,30 @@ pwsh ./scripts/Stop-Lab.ps1
 pwsh ./scripts/Stop-Lab.ps1 -Destroy
 ```
 
-## Planned complete lab
+## Implementation and verification stages
 
 | Stage | Deliverable and exercise | Status |
 | --- | --- | --- |
 | 1 | Terraform AKS/ACR, local lifecycle scripts; inspect identities and RBAC | Code prepared; live verification pending |
 | 2 | Reused Python/Java source; multistage images; Helm releases, ACR push; health and rollback exercise | Code prepared; Azure verification pending |
 | 3 | Jenkins Helm/JCasC, pinned direct plugins, shared library, dynamic agents; namespace-scoped RBAC and denied-operation exercise | Code prepared; Azure verification pending |
-| 4 | Consistent Jenkins backup outside AKS, restore to a fresh PVC; prove jobs/configuration survive | Planned |
-| 5 | Prometheus, Grafana, Loki and log collection; bounded retention, dashboards/alerts; broken-image, readiness and resource-pressure exercises | Planned |
-| 6 | Budget/alerts, Cost Management review, cost report and complete one-command verification | Planned |
+| 4 | Offline external backup, separate key and new-PVC recovery; successful post-restore build | Implemented; kind verified, Azure pending |
+| 5 | Bounded metrics/log collection, dashboard and alerts; outage firing/recovery verification | Implemented; kind verified, Azure pending |
+| 6 | Complete start/test/backup/stop, retail estimate and Cost Management report; budget exercise | Implemented; Azure lifecycle/billing pending |
 
 See [source review and reuse decisions](docs/source-review.md). The existing local
 repository is preserved. Do not describe planned stages as implemented capabilities.
+
+## Repeated learning sessions
+
+`Start-Lab.ps1 -Apply` installs the complete lab and runs verification. With
+`-RestoreBackup <folder> -KeyFile <private key path>` it restores previous Jenkins
+state. `Test-Lab.ps1` repeats verification without creating infrastructure.
+`Stop-Lab.ps1 -Destroy` backs up Jenkins before deletion and checks that both Azure
+resource groups are absent. A failed backup blocks destruction. See stage 6 for the
+explicit discard option and partial-failure handling. Backup archives and keys are
+sensitive local artifacts; do not commit or publish them.
+
+Exercises: [infrastructure](docs/stage-01.md), [Helm/rollback](docs/stage-02.md),
+[Jenkins/RBAC](docs/stage-03.md), [recovery](docs/stage-04.md),
+[observability/failures](docs/stage-05.md), [lifecycle/costs](docs/stage-06.md).

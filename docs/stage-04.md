@@ -63,8 +63,8 @@ the original claim to force recovery. A stopped controller can be restarted with
 kubectl --kubeconfig .local/aks.kubeconfig -n jenkins scale statefulset/jenkins --replicas=1
 ```
 
-The lifecycle integration in the final stage will call backup before destruction and
-offer explicit restoration on the next start. Backups and keys must outlive the cluster.
+The final lifecycle integration calls backup before destruction and
+offers explicit restoration on the next start. Backups and keys must outlive the cluster.
 
 Explain in an interview: quieting builds is different from stopping the controller;
 a consistent offline home backup needs the credential key and matching admin Secret;

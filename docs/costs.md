@@ -9,7 +9,7 @@ currency conversion and current retail pricing have not been verified in the acc
 Poland Central; AKS Free; two Standard_D4as_v5 nodes (4 vCPU / 16 GiB each), two 64 GiB
 managed OS disks, ACR Basic, Standard egress load balancer and its public IP.
 No NAT Gateway, application LoadBalancer, private endpoints, Log Analytics or paid
-Grafana service. Stage 3 adds a 10 GiB Jenkins PVC (managed-csi); monitoring storage is still planned.
+Grafana service. Stage 3 adds a 10 GiB Jenkins PVC (managed-csi); monitoring now uses bounded temporary emptyDirs on the existing nodes (no extra PVCs).
 Azure managed disk allocation/billing tiers can exceed the PVC request. Reserve extra
 for this disk and the additional boot/test time; the table below is the original
 stage 1 allowance, not an updated live quote or a cost cap.
@@ -57,3 +57,12 @@ alerts if desired. Confirm alert recipients yourself; this repo sends no emails.
 A budget only notifies; it does not enforce a spending cap or delete resources.
 Budget-as-code and a reproducible session report are planned for stage 6.
 Record actual versus estimated costs after each session. Cost data may arrive after cleanup.
+
+## Complete-lab estimate and actual report
+
+The original table above remains a historical planning allowance, not a final quote.
+Run `scripts/Get-LabCostEstimate.ps1` for the current selected Linux PAYG compute
+rate plus the labelled non-compute allowance. Start-Lab performs this read before
+applying infrastructure. Recovery may retain an extra Jenkins disk until destruction.
+Use `scripts/Get-LabCostReport.ps1` after Cost Management data arrives to inspect
+both groups. No real subscription/billing query has been tested in CI. See stage 6.
