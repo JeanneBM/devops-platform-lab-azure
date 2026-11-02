@@ -1,3 +1,5 @@
+data "azurerm_client_config" "current" {}
+
 locals {
   name = "${var.prefix}-${var.suffix}"
   tags = {
@@ -52,6 +54,7 @@ resource "azurerm_kubernetes_cluster" "lab" {
   }
 
   azure_active_directory_role_based_access_control {
+    tenant_id          = data.azurerm_client_config.current.tenant_id
     azure_rbac_enabled = true
   }
 
