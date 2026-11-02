@@ -7,7 +7,7 @@ permissions:
 jobs:
   jenkins:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4.3.0
@@ -27,6 +27,10 @@ jobs:
         shell: pwsh
         run: |
           ./scripts/Test-Jenkins.ps1 -Kubeconfig (Join-Path $env:RUNNER_TEMP 'jenkins.kubeconfig')
+      - name: Backup offline and restore to a new PVC
+        shell: pwsh
+        run: |
+          ./scripts/Test-JenkinsRecovery.ps1 -Kubeconfig (Join-Path $env:RUNNER_TEMP 'jenkins.kubeconfig') -SourceRef $env:GITHUB_SHA -StorageClass standard
       - name: Diagnostics without secrets
         if: failure()
         run: |

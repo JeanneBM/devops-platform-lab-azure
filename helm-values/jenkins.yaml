@@ -18,7 +18,7 @@ controller:
     - workflow-aggregator:608.v67378e9d3db_1
     - git:5.11.0
     - configuration-as-code:2143.vc78d4eb_d4174
-  installLatestPlugins: true
+  installLatestPlugins: false
   installLatestSpecifiedPlugins: false
   sidecars:
     configAutoReload:
@@ -55,5 +55,7 @@ serviceAccountAgent:
   automountServiceAccountToken: false
 persistence:
   enabled: true
+  annotations:
+    helm.sh/resource-policy: keep
   storageClass: managed-csi
   size: 10Gi

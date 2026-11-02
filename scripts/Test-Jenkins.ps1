@@ -1,10 +1,10 @@
 #Requires -Version 7.2
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$Kubeconfig)
+param([Parameter(Mandatory)][string]$Kubeconfig, [string]$AdminSecretName = 'jenkins')
 . (Join-Path $PSScriptRoot 'Common.ps1')
 $kube = (Resolve-Path -LiteralPath $Kubeconfig).Path
 & (Join-Path $PSScriptRoot 'Test-JenkinsRbac.ps1') -Kubeconfig $kube
-$secretJson = & kubectl --kubeconfig $kube -n jenkins get secret jenkins -o json
+$secretJson = & kubectl --kubeconfig $kube -n jenkins get secret $AdminSecretName -o json
 if ($LASTEXITCODE -ne 0) { throw 'Cannot retrieve the local Jenkins administrator secret.' }
 $secret = ($secretJson -join "`n") | ConvertFrom-Json
 $username = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($secret.data.'jenkins-admin-user'))
