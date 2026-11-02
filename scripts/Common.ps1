@@ -3,6 +3,28 @@ $ErrorActionPreference = 'Stop'
 $script:LabRoot = Split-Path $PSScriptRoot -Parent
 $script:InfraRoot = Join-Path $script:LabRoot 'infra'
 
+function Assert-LabTools {
+    param([string[]]$Tools)
+    foreach ($tool in $Tools) {
+        if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
+            throw "Install $tool and reopen PowerShell."
+        }
+    }
+}
+
+function Assert-LabHelm {
+    $version = & helm version --short
+    if ($LASTEXITCODE -ne 0 -or $version -notmatch '^v3\.') {
+        throw 'This lab uses Helm 3. Install Helm 3 before deploying.'
+    }
+}
+
+function Get-LabOutputs {
+    $json = & terraform "-chdir=$script:InfraRoot" output -json
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot read Terraform outputs.' }
+    return (($json -join "`n") | ConvertFrom-Json)
+}
+
 function Invoke-LabNative {
     param([string]$Executable, [string[]]$Arguments)
     & $Executable @Arguments | Out-Host

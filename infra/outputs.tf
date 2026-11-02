@@ -21,3 +21,7 @@ output "acr_login_server" {
 output "oidc_issuer_url" {
   value = azurerm_kubernetes_cluster.lab.oidc_issuer_url
 }
+
+output "subscription_id" {
+  value = var.subscription_id
+}

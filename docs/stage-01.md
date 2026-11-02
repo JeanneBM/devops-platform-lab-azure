@@ -51,8 +51,8 @@ Copy-Item lab.tfvars.example lab.tfvars
 pwsh ./scripts/Start-Lab.ps1
 ```
 
-Inspect the plan: one AKS cluster, one ACR, one lab resource group and two scoped role
-assignments. AKS also creates its managed node resource group and billable network,
+Inspect the plan: one AKS cluster, one ACR, one lab resource group and three scoped role
+assignments (including stage 2 operator AcrPush). AKS also creates its managed node resource group and billable network,
 compute and disk resources. No Log Analytics workspace or application resources
 should appear. Terraform refresh/read calls are real Azure reads, not a simulated plan.
 
@@ -83,7 +83,8 @@ Expected: provisioning succeeded, two ready nodes, system pods healthy, OIDC/WI 
 local accounts disabled, Basic ACR with admin disabled. The named operator can create
 namespaces. Azure role propagation may take several minutes. Do not use `--admin`.
 This is operator authorization only: namespace-scoped workload permissions and negative
-RBAC tests belong to stage 3. No applications exist in stage 1.
+RBAC tests belong to stage 3. Stage 1 originally contained no applications. Start-Lab now also performs stage 2
+application deployment and tests; see docs/stage-02.md.
 
 ## Exercise C — cleanup and proof
 
@@ -123,6 +124,7 @@ Re-cloning the repo does not restore state or remove existing resources.
 ## Verification record
 
 At preparation time: no Azure apply, no real role test, no live destruction test.
-CI validates formatting, provider schema and PowerShell parsing without Azure credentials.
+CI validates formatting, provider schema, PowerShell parsing, lifecycle safeguards,
+application tests and Helm deployments in kind without Azure credentials.
 After a future authorized session, record date, commit, region, redacted verification
 results, runtime and cleanup results. Keep subscription IDs, tokens and kubeconfigs private.

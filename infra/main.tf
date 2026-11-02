@@ -85,3 +85,10 @@ resource "azurerm_role_assignment" "operator" {
   role_definition_name = "Azure Kubernetes Service RBAC Cluster Admin"
   principal_id         = var.operator_object_id
 }
+
+# The human builds/pushes locally; pods receive no registry push permission.
+resource "azurerm_role_assignment" "operator_push" {
+  scope                = azurerm_container_registry.lab.id
+  role_definition_name = "AcrPush"
+  principal_id         = var.operator_object_id
+}

@@ -1,0 +1,56 @@
+name: Application and Helm verification
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  applications:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.17.3
+      - name: Test source and rendered Helm resources
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m pytest -q
+          bash scripts/test-java.sh
+          helm lint charts/lab-app --values helm-values/python.yaml
+          helm lint charts/lab-app --values helm-values/java.yaml
+      - name: Install kind
+        run: |
+          curl -fsSLo kind https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-amd64
+          echo "aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d  kind" | sha256sum --check
+          sudo install -m 0755 kind /usr/local/bin/kind
+      - name: Build the real runtime images and create isolated CI cluster
+        run: |
+          docker build --platform linux/amd64 -t devops-platform-lab-azure/pycalculator:ci src/python
+          docker build --platform linux/amd64 -t devops-platform-lab-azure/g4g7singleton:ci src/java
+          kind create cluster --name azure-lab-ci --config ci/kind.yaml --kubeconfig "$RUNNER_TEMP/lab.kubeconfig" --wait 180s
+          kind load docker-image --name azure-lab-ci devops-platform-lab-azure/pycalculator:ci devops-platform-lab-azure/g4g7singleton:ci
+      - name: Deploy through PowerShell and verify HTTP behavior
+        shell: pwsh
+        run: |
+          $kube = Join-Path $env:RUNNER_TEMP 'lab.kubeconfig'
+          ./scripts/Deploy-Applications.ps1 -Registry devops-platform-lab-azure -ImageTag ci -Kubeconfig $kube
+          ./scripts/Test-Applications.ps1 -Kubeconfig $kube
+      - name: Failure diagnostics
+        if: failure()
+        run: |
+          kubectl --kubeconfig "$RUNNER_TEMP/lab.kubeconfig" get pods -A -o wide || true
+          kubectl --kubeconfig "$RUNNER_TEMP/lab.kubeconfig" get events -A --sort-by=.lastTimestamp || true
+          kubectl --kubeconfig "$RUNNER_TEMP/lab.kubeconfig" -n python logs deployment/pycalculator --tail=100 || true
+          kubectl --kubeconfig "$RUNNER_TEMP/lab.kubeconfig" -n java logs deployment/g4g7singleton --tail=100 || true
+      - name: Remove CI cluster
+        if: always()
+        run: kind delete cluster --name azure-lab-ci

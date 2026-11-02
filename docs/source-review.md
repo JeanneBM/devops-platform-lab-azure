@@ -12,19 +12,20 @@ JCasC, a shared library or a rehearsed backup/restore procedure.
 
 | Existing element | Azure reuse decision |
 | --- | --- |
-| `src/python/app.py`, templates, tests and dependencies | Copy at the pinned source commit during stage 2; keep calculator behavior |
-| `src/java/src`, tests and multistage Dockerfile | Copy during stage 2; preserve greeting and health endpoints |
-| Python Dockerfile | Keep the non-root Gunicorn runtime; add multistage dependency build in stage 2 |
-| Kubernetes probes/resources/security contexts | Translate into Helm templates; retain assertions and HTTP verification |
+| `src/python/app.py`, templates, tests and dependencies | Copied from the pinned source commit; calculator behavior preserved |
+| `src/java/src`, tests and multistage Dockerfile | Copied; greeting and health endpoints preserved |
+| Python Dockerfile | Non-root Gunicorn preserved; dependency wheels now built in a separate stage |
+| Kubernetes probes/resources/security contexts | Translated into charts/lab-app; chart assertions and HTTP verification added |
 | Kustomize structure and kind configuration | Retain in local repository; Azure deployments will use Helm |
 | `scripts/build.sh` OCI source label | Retain the principle, but use the Azure repository URL for Azure-built images |
 | Jenkins single-controller/Recreate/PVC | Carry the storage safety principle into the Jenkins Helm configuration |
 | Root Jenkinsfile | Evolve to Kubernetes pod agents and a shared library in stage 3 |
 | Local `port-forward` access | Retain for the lab; no application LoadBalancer or Ingress initially |
 
-No application sources are copied in stage 1: this commit establishes their Azure
-infrastructure first. The final workflow must build and verify the copied sources,
-not assume old GHCR images prove a new ACR deployment.
+Stage 1 established Azure infrastructure. Stage 2 copies application sources and unit tests
+from the pinned commit; the Python Dockerfile is deliberately changed to multistage.
+Application CI builds these sources and exercises the actual Helm deployments in kind.
+It does not assume old GHCR images prove a new ACR deployment.
 
 Avoid these misleading claims: enabling Workload Identity alone grants no Azure
 permissions; enabling a network policy engine alone isolates no namespaces; running

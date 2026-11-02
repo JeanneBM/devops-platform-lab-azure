@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>PyCalculator</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.min.css"
+    />
+
+    <style>
+      .alert {
+        background: blue;
+        padding: 1rem;
+        border-radius: 5px;
+        color: white;
+        margin: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h3>PyCalculator</h3>
+    </div>
+
+    <!-- Form -->
+    <div class="container">
+      <form action="/calculations" method="POST">
+        <label for="x">Enter the first number: </label>
+        <input
+          type="number"
+          placeholder="First Number"
+          class="u-full-width"
+          name="x"
+          id="x"
+          step="any"
+          required
+        />
+
+        <label for="y">Enter the second number: </label>
+        <input
+          type="number"
+          placeholder="Second Number"
+          class="u-full-width"
+          name="y"
+          id="y"
+          step="any"
+          required
+        />
+
+        <label for="operation">What kind of operation should be performed?</label>
+        <select class="u-full-width" name="operation" id="operation">
+          <option value="addition">Addition</option>
+          <option value="subtraction">Subtraction</option>
+          <option value="multiplication">Multiplication</option>
+          <option value="division">Division</option>
+        </select>
+
+        <input type="submit" value="Perform" id="calc_btn" />
+        <br />
+        {% if error %}
+        <div class="alert" role="alert">{{ error }}</div>
+        {% elif result is defined %}
+        <div class="alert" aria-live="polite">{{ result }}</div>
+        {% endif %}
+      </form>
+    </div>
+  </body>
+</html>
