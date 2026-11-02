@@ -2,6 +2,7 @@ import jenkins.model.Jenkins
 import hudson.model.ParametersDefinitionProperty
 import hudson.model.StringParameterDefinition
 import hudson.plugins.git.GitSCM
+import hudson.plugins.git.UserRemoteConfig
 import hudson.plugins.git.BranchSpec
 import org.jenkinsci.plugins.workflow.job.WorkflowJob
 import org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition
@@ -15,8 +16,9 @@ def job = instance.getItem('lab-verify')
 if (job == null) {
     job = instance.createProject(WorkflowJob, 'lab-verify')
 }
-def source = new GitSCM('https://github.com/JeanneBM/devops-platform-lab-azure.git')
-source.setBranches([new BranchSpec(revision)])
+def source = new GitSCM(
+    [new UserRemoteConfig('https://github.com/JeanneBM/devops-platform-lab-azure.git', null, null, null)],
+    [new BranchSpec(revision)], null, null, [])
 def definition = new CpsScmFlowDefinition(source, 'Jenkinsfile')
 definition.setLightweight(true)
 job.setDefinition(definition)

@@ -10,8 +10,8 @@ deployed Git commit. No anonymous build access or precommitted password is used;
 the upstream chart generates the administrator Secret.
 
 The four explicit plugin versions are recorded in `helm-values/jenkins.yaml`.
-The plugin installer resolves minimum compatible transitive dependencies, with
-latest-resolution disabled. This is not a complete transitive plugin lock or an
+The plugin installer resolves current transitive dependencies, using the upstream
+chart's latest-dependency resolution to avoid incompatible minimum-version combinations. This is not a complete transitive plugin lock or an
 offline/reproducible image. Record installed plugin versions before a real upgrade.
 No plugin downloads occur on dynamic agents; the controller's initial installation
 needs access to Jenkins update/download services.
