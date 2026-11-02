@@ -114,8 +114,8 @@ pwsh ./scripts/Stop-Lab.ps1 -Destroy
 ```
 
 Verify both resource groups are gone using the commands in stage 1. The applications
-are stateless; stage 2 needs no application backup. Jenkins backup/restore will be
-implemented before we depend on persistent Jenkins data.
+are stateless; stage 2 needs no application backup. Stage 3 now installs disposable Jenkins data. Automated backup/restore remains
+stage 4; do not rely on persistence across whole-environment destruction yet.
 
 ## Explain it in an interview
 

@@ -19,5 +19,6 @@ if (-not $Destroy) {
     Write-Host 'Back up Jenkins outside the cluster (once installed) before using -Destroy.'
     return
 }
+Write-Warning 'Destroy removes the Jenkins PVC and data. Automated external backup is not implemented yet.'
 Invoke-LabNative 'terraform' @("-chdir=$script:InfraRoot", 'apply', '-input=false', $plan)
 Write-Host 'Terraform destroy finished. Verify both resource groups are gone; see docs/stage-01.md.'

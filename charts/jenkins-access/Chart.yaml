@@ -1,0 +1,5 @@
+apiVersion: v2
+name: jenkins-access
+description: Namespace-scoped Jenkins controller and unprivileged build identities
+type: application
+version: 0.1.0

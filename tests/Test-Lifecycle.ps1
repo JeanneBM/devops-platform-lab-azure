@@ -11,6 +11,7 @@ function global:docker { $global:LASTEXITCODE = 0 }
 function global:kubectl { $global:LASTEXITCODE = 0 }
 function global:kubelogin { $global:LASTEXITCODE = 0 }
 function global:helm { $global:LASTEXITCODE = 0; 'v3.17.3' }
+function global:git { $global:LASTEXITCODE = 0; '1111111111111111111111111111111111111111' }
 function global:terraform {
     $global:LabCalls += ,@($args)
     $global:LASTEXITCODE = 0
@@ -51,6 +52,6 @@ try {
     Write-Host 'Lifecycle safety tests passed (mock executables; no Azure calls).'
 } finally {
     Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item function:az, function:terraform, function:docker, function:kubectl, function:kubelogin, function:helm -ErrorAction SilentlyContinue
+    Remove-Item function:az, function:terraform, function:docker, function:kubectl, function:kubelogin, function:helm, function:git -ErrorAction SilentlyContinue
     Remove-Variable LabCalls, FailLabPlan -Scope Global -ErrorAction SilentlyContinue
 }

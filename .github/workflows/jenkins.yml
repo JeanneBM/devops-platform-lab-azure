@@ -1,0 +1,39 @@
+name: Jenkins dynamic agent verification
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  jenkins:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.17.3
+      - name: Install kind
+        run: |
+          curl -fsSLo kind https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-amd64
+          echo "aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d  kind" | sha256sum --check
+          sudo install -m 0755 kind /usr/local/bin/kind
+          kind create cluster --name jenkins-lab-ci --config ci/kind.yaml --kubeconfig "$RUNNER_TEMP/jenkins.kubeconfig" --wait 180s
+      - name: Install pinned Jenkins and namespace-scoped permissions
+        shell: pwsh
+        run: |
+          ./scripts/Deploy-Jenkins.ps1 -Kubeconfig (Join-Path $env:RUNNER_TEMP 'jenkins.kubeconfig') -SourceRef $env:GITHUB_SHA -StorageClass standard
+      - name: Prove RBAC, shared library, real dynamic agent build and cleanup
+        shell: pwsh
+        run: |
+          ./scripts/Test-Jenkins.ps1 -Kubeconfig (Join-Path $env:RUNNER_TEMP 'jenkins.kubeconfig')
+      - name: Diagnostics without secrets
+        if: failure()
+        run: |
+          kubectl --kubeconfig "$RUNNER_TEMP/jenkins.kubeconfig" get pods,pvc -A -o wide || true
+          kubectl --kubeconfig "$RUNNER_TEMP/jenkins.kubeconfig" get events -A --sort-by=.lastTimestamp || true
+          kubectl --kubeconfig "$RUNNER_TEMP/jenkins.kubeconfig" -n jenkins logs statefulset/jenkins -c init --tail=150 || true
+          kubectl --kubeconfig "$RUNNER_TEMP/jenkins.kubeconfig" -n jenkins logs statefulset/jenkins -c jenkins --tail=150 || true
+      - name: Remove CI cluster
+        if: always()
+        run: kind delete cluster --name jenkins-lab-ci

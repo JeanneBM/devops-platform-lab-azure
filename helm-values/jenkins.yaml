@@ -1,0 +1,59 @@
+# Upstream jenkinsci/jenkins chart 5.10.9. Helm 3 required.
+controller:
+  image:
+    tag: 2.580.2-jdk25
+  numExecutors: 0
+  serviceType: ClusterIP
+  agentListenerEnabled: false
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: '2'
+      memory: 2Gi
+  javaOpts: '-Xms512m -Xmx1024m'
+  installPlugins:
+    - kubernetes:4560.vc25b_83890c34
+    - workflow-aggregator:608.v67378e9d3db_1
+    - git:5.11.0
+    - configuration-as-code:2143.vc78d4eb_d4174
+  installLatestPlugins: false
+  installLatestSpecifiedPlugins: false
+  sidecars:
+    configAutoReload:
+      enabled: false
+  containerEnv:
+    - name: LAB_SOURCE_REF
+      value: main
+  JCasC:
+    defaultConfig: true
+    configScripts:
+      lab-message: |
+        jenkins:
+          systemMessage: "Ephemeral DevOps lab. Builds run on disposable Kubernetes agents."
+  probes:
+    startupProbe:
+      failureThreshold: 60
+      periodSeconds: 10
+agent:
+  namespace: jenkins-agents
+  disableDefaultAgent: true
+  websocket: true
+  containerCap: 2
+  serviceAccount: lab-agent
+  image:
+    tag: 3395.v6e5377b_0fb_3c-2-jdk25
+rbac:
+  create: false
+serviceAccount:
+  create: false
+  name: lab-controller
+serviceAccountAgent:
+  create: false
+  name: lab-agent
+  automountServiceAccountToken: false
+persistence:
+  enabled: true
+  storageClass: managed-csi
+  size: 10Gi

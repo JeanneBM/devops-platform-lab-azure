@@ -9,7 +9,10 @@ currency conversion and current retail pricing have not been verified in the acc
 Poland Central; AKS Free; two Standard_D4as_v5 nodes (4 vCPU / 16 GiB each), two 64 GiB
 managed OS disks, ACR Basic, Standard egress load balancer and its public IP.
 No NAT Gateway, application LoadBalancer, private endpoints, Log Analytics or paid
-Grafana service. Application/Jenkins/monitoring storage is not yet provisioned.
+Grafana service. Stage 3 adds a 10 GiB Jenkins PVC (managed-csi); monitoring storage is still planned.
+Azure managed disk allocation/billing tiers can exceed the PVC request. Reserve extra
+for this disk and the additional boot/test time; the table below is the original
+stage 1 allowance, not an updated live quote or a cost cap.
 
 | Item | Planning assumption (USD, before tax) |
 | --- | --- |

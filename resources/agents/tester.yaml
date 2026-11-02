@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app.kubernetes.io/component: lab-build-agent
+spec:
+  serviceAccountName: lab-agent
+  automountServiceAccountToken: false
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    runAsNonRoot: true
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: jnlp
+      image: jenkins/inbound-agent:3395.v6e5377b_0fb_3c-2-jdk25
+      env:
+        - name: JENKINS_WEB_SOCKET
+          value: 'true'
+      resources:
+        requests: {cpu: 100m, memory: 256Mi}
+        limits: {cpu: 500m, memory: 512Mi}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities: {drop: [ALL]}
+    - name: python
+      image: python:3.12-slim
+      command: [sleep]
+      args: [99d]
+      resources:
+        requests: {cpu: 100m, memory: 256Mi}
+        limits: {cpu: '1', memory: 512Mi}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities: {drop: [ALL]}
+    - name: java
+      image: eclipse-temurin:21-jdk
+      command: [sleep]
+      args: [99d]
+      resources:
+        requests: {cpu: 100m, memory: 512Mi}
+        limits: {cpu: '1', memory: 1Gi}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities: {drop: [ALL]}

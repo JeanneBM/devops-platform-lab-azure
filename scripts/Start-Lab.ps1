@@ -7,9 +7,13 @@ param(
 . (Join-Path $PSScriptRoot 'Common.ps1')
 if ($Apply) {
     # Fail before infrastructure creation if local application tools are missing.
-    Assert-LabTools @('docker', 'kubectl', 'kubelogin', 'helm')
+    Assert-LabTools @('docker', 'kubectl', 'kubelogin', 'helm', 'git')
     Assert-LabHelm
     Invoke-LabNative 'docker' @('info')
+    $sourceRef = & git -C $script:LabRoot rev-parse HEAD
+    if ($LASTEXITCODE -ne 0 -or $sourceRef -notmatch '^[0-9a-f]{40}$') {
+        throw 'Run from a Git checkout with a committed Jenkins pipeline.'
+    }
 }
 $config = Initialize-Lab $ConfigFile
 $plan = Join-Path $script:InfraRoot 'create.tfplan'
@@ -39,4 +43,6 @@ $tag = 'session-' + [DateTime]::UtcNow.ToString('yyyyMMddHHmmssfff')
 & (Join-Path $PSScriptRoot 'Deploy-Applications.ps1') -Registry $outputs.acr_login_server.value `
     -ImageTag $tag -Kubeconfig $kube
 & (Join-Path $PSScriptRoot 'Test-Applications.ps1') -Kubeconfig $kube
-Write-Host "Applications deployed and verified with image tag $tag. Jenkins is not installed yet."
+& (Join-Path $PSScriptRoot 'Deploy-Jenkins.ps1') -Kubeconfig $kube -SourceRef $sourceRef
+& (Join-Path $PSScriptRoot 'Test-Jenkins.ps1') -Kubeconfig $kube
+Write-Host "Applications and Jenkins verified. Application tag: $tag; pipeline commit: $sourceRef."
