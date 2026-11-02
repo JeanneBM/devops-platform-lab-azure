@@ -36,12 +36,20 @@ try {
     # Basic authentication is used only over the explicit loopback port-forward.
     $info = Invoke-RestMethod "$base/api/json?tree=numExecutors" @request
     if ($info.numExecutors -ne 0) { throw 'Controller executors must be zero.' }
+    $pluginInfo = Invoke-RestMethod "$base/pluginManager/api/json?tree=plugins[shortName,version,active]" @request
+    foreach ($name in @('kubernetes', 'workflow-aggregator', 'git', 'configuration-as-code')) {
+        $plugin = @($pluginInfo.plugins | Where-Object { $_.shortName -eq $name })
+        if ($plugin.Count -ne 1 -or -not $plugin[0].active) { throw "Required plugin inactive: $name" }
+        Write-Host "Active plugin: $name $($plugin[0].version)"
+    }
+    $inactive = @($pluginInfo.plugins | Where-Object { -not $_.active })
+    if ($inactive.Count -gt 0) { throw 'Installed Jenkins plugins failed to activate. Inspect controller startup logs.' }
     $job = Invoke-RestMethod "$base/job/lab-verify/api/json?tree=nextBuildNumber" @request
     $number = $job.nextBuildNumber
     $crumb = Invoke-RestMethod "$base/crumbIssuer/api/json" @request
     $headers = @{}
     $headers[$crumb.crumbRequestField] = $crumb.crumb
-    Invoke-RestMethod "$base/job/lab-verify/build?delay=0sec" -Method Post -Headers $headers @request | Out-Null
+    Invoke-RestMethod "$base/job/lab-verify/buildWithParameters?delay=0sec" -Method Post -ContentType 'application/x-www-form-urlencoded' -Body '' -Headers $headers @request | Out-Null
     $observedAgent = $false
     $completed = $false
     $deadline = [DateTime]::UtcNow.AddMinutes(12)
