@@ -108,7 +108,8 @@
               },
               "initialDelaySeconds": 5,
               "periodSeconds": 5,
-              "failureThreshold": 24
+              "failureThreshold": 24,
+              "timeoutSeconds": 5
             }
           }
         ],
@@ -244,7 +245,8 @@
               },
               "initialDelaySeconds": 5,
               "periodSeconds": 5,
-              "failureThreshold": 24
+              "failureThreshold": 24,
+              "timeoutSeconds": 5
             }
           }
         ],
@@ -378,7 +380,8 @@
               },
               "initialDelaySeconds": 5,
               "periodSeconds": 5,
-              "failureThreshold": 24
+              "failureThreshold": 24,
+              "timeoutSeconds": 5
             }
           }
         ],
@@ -521,7 +524,8 @@
               },
               "initialDelaySeconds": 5,
               "periodSeconds": 5,
-              "failureThreshold": 24
+              "failureThreshold": 24,
+              "timeoutSeconds": 5
             }
           }
         ],
@@ -620,11 +624,11 @@
             "resources": {
               "requests": {
                 "cpu": "50m",
-                "memory": "128Mi"
+                "memory": "256Mi"
               },
               "limits": {
                 "cpu": "500m",
-                "memory": "256Mi"
+                "memory": "512Mi"
               }
             },
             "securityContext": {
@@ -698,7 +702,8 @@
               },
               "initialDelaySeconds": 5,
               "periodSeconds": 5,
-              "failureThreshold": 24
+              "failureThreshold": 24,
+              "timeoutSeconds": 5
             }
           }
         ],
@@ -825,12 +830,13 @@
             ],
             "readinessProbe": {
               "httpGet": {
-                "path": "/metrics",
-                "port": "http"
+                "path": "/healthz",
+                "port": 8081
               },
               "initialDelaySeconds": 5,
               "periodSeconds": 5,
-              "failureThreshold": 24
+              "failureThreshold": 24,
+              "timeoutSeconds": 5
             }
           }
         ],
