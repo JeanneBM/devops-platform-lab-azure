@@ -75,7 +75,7 @@ function Get-LabJenkinsAdminSecret {
 
 function Read-LabSettings {
     param([string]$Path)
-    $settings = @{ location = 'polandcentral'; node_size = 'Standard_D4as_v5' }
+    $settings = @{ location = 'polandcentral'; node_size = 'Standard_D4as_v5'; prefix = 'devopslab' }
     $raw = Get-Content -LiteralPath $Path -Raw
     if ($Path.EndsWith('.json')) {
         $parsed = $raw | ConvertFrom-Json -AsHashtable
@@ -89,6 +89,6 @@ function Read-LabSettings {
             $settings[$Matches[1]] = $Matches[2]
         }
     }
-    if (-not $settings.ContainsKey('subscription_id')) { throw 'Explicit subscription_id is required.' }
+    if (-not $settings.ContainsKey('subscription_id') -or -not $settings.ContainsKey('suffix')) { throw 'Explicit subscription_id and suffix are required.' }
     return $settings
 }

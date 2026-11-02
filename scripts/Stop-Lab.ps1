@@ -22,16 +22,18 @@ if (-not $Destroy) {
     Write-Host 'Back up Jenkins outside the cluster (once installed) before using -Destroy.'
     return
 }
-$outputs = Get-LabOutputs
-$subscription = $outputs.subscription_id.value
-$groups = @($outputs.resource_group_name.value, $outputs.node_resource_group_name.value)
+# Derive the known names from the original config even after a partial apply,
+# when Terraform may not yet have produced all outputs.
+$settings = Read-LabSettings $config
+$subscription = $settings.subscription_id
+$groups = @("rg-$($settings.prefix)-$($settings.suffix)", "rg-$($settings.prefix)-$($settings.suffix)-nodes")
 $kube = Join-Path $script:LabRoot '.local/aks.kubeconfig'
 if (-not $DiscardJenkinsData -and (Test-Path $kube)) {
     $jenkins = & kubectl --kubeconfig $kube -n jenkins get statefulset jenkins --ignore-not-found -o name
     if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect Jenkins. Restore access or explicitly use -DiscardJenkinsData for disposable data.' }
     if ($jenkins) {
         $backup = & (Join-Path $PSScriptRoot 'Backup-Jenkins.ps1') -Kubeconfig $kube -BackupDirectory $BackupDirectory -KeyDirectory $KeyDirectory
-        Write-Host "Verified backup created before destruction: $backup"
+        Write-Host "Backup saved before destruction: $backup"
     }
 }
 if ($DiscardJenkinsData) { Write-Warning 'Explicitly discarding Jenkins data without a new backup.' }

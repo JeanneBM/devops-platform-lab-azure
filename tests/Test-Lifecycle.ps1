@@ -6,9 +6,9 @@ $root = Split-Path $PSScriptRoot -Parent
 $temp = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString())
 $global:LabCalls = @()
 $global:FailLabPlan = $false
-function global:az { $global:LASTEXITCODE = 0 }
+function global:az { $global:LASTEXITCODE = 0; if ($args -contains 'group' -and $args -contains 'exists') { 'false' } }
 function global:docker { $global:LASTEXITCODE = 0 }
-function global:kubectl { $global:LASTEXITCODE = 0 }
+function global:kubectl { $global:LASTEXITCODE = 0; 'statefulset.apps/jenkins' }
 function global:kubelogin { $global:LASTEXITCODE = 0 }
 function global:helm { $global:LASTEXITCODE = 0; 'v3.17.3' }
 function global:git { $global:LASTEXITCODE = 0; '1111111111111111111111111111111111111111' }
@@ -24,7 +24,7 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $temp 'infra') -Force | Out-Null
     Copy-Item (Join-Path $root 'scripts') -Destination $temp -Recurse
     $config = Join-Path $temp 'lab.tfvars'
-    Set-Content $config 'subscription_id = "11111111-1111-1111-1111-111111111111"'
+    Set-Content $config @('subscription_id = "11111111-1111-1111-1111-111111111111"', 'suffix = "unit1234"')
     $start = Join-Path $temp 'scripts/Start-Lab.ps1'
     $stop = Join-Path $temp 'scripts/Stop-Lab.ps1'
     & $start -ConfigFile $config
@@ -50,6 +50,16 @@ try {
     & $stop -ConfigFile $config
     Assert-Lab (@($global:LabCalls | Where-Object { $_ -contains 'apply' }).Count -eq 0) 'Default stop destroyed resources!'
     Assert-Lab (@($global:LabCalls | Where-Object { $_ -contains '-destroy' }).Count -eq 1) 'No destroy plan.'
+    New-Item -ItemType Directory -Force (Join-Path $temp '.local') | Out-Null
+    Set-Content (Join-Path $temp '.local/aks.kubeconfig') 'fake'
+    Set-Content (Join-Path $temp 'scripts/Backup-Jenkins.ps1') "throw 'simulated backup failure'"
+    $global:LabCalls = @()
+    $caught = $false
+    try { & $stop -ConfigFile $config -Destroy } catch { $caught = $_.Exception.Message -match 'simulated backup failure' }
+    Assert-Lab $caught 'Expected backup failure before destruction.'
+    Assert-Lab (@($global:LabCalls | Where-Object { $_ -contains 'apply' }).Count -eq 0) 'Destroy proceeded after failed backup!'
+    & $stop -ConfigFile $config -Destroy -DiscardJenkinsData
+    Assert-Lab (@($global:LabCalls | Where-Object { $_ -contains 'apply' }).Count -eq 1) 'Explicit discard did not execute the mock destroy plan.'
     Write-Host 'Lifecycle safety tests passed (mock executables; no Azure calls).'
 } finally {
     Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue
