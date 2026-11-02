@@ -88,7 +88,7 @@ try {
         Start-Sleep -Seconds 2
     } while ([DateTime]::UtcNow -lt $deadline)
     if (@($pods.items).Count -ne 0) { throw 'Agent pods were not removed after the build.' }
-    Write-Host "Jenkins build $number: shared library loaded, Python/Java tests passed on a dynamic agent, agent removed, RBAC checks passed."
+    Write-Host "Jenkins build ${number}: shared library loaded, Python/Java tests passed on a dynamic agent, agent removed, RBAC checks passed."
 } finally {
     try {
         if (-not $process.HasExited) { $process.Kill($true); $process.WaitForExit() }
