@@ -7,7 +7,7 @@ permissions:
 jobs:
   applications:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -44,6 +44,17 @@ jobs:
           $kube = Join-Path $env:RUNNER_TEMP 'lab.kubeconfig'
           ./scripts/Deploy-Applications.ps1 -Registry devops-platform-lab-azure -ImageTag ci -Kubeconfig $kube
           ./scripts/Test-Applications.ps1 -Kubeconfig $kube
+      - name: Install metrics, logging and dashboards
+        shell: pwsh
+        run: |
+          $kube = Join-Path $env:RUNNER_TEMP 'lab.kubeconfig'
+          kubectl --kubeconfig $kube create namespace jenkins
+          kubectl --kubeconfig $kube create namespace jenkins-agents
+          ./scripts/Deploy-Observability.ps1 -Kubeconfig $kube
+      - name: Verify collected telemetry and deliberate outage alert recovery
+        shell: pwsh
+        run: |
+          ./scripts/Test-Observability.ps1 -Kubeconfig (Join-Path $env:RUNNER_TEMP 'lab.kubeconfig') -ExerciseAlerts
       - name: Failure diagnostics
         if: failure()
         run: |
@@ -51,6 +62,9 @@ jobs:
           kubectl --kubeconfig "$RUNNER_TEMP/lab.kubeconfig" get events -A --sort-by=.lastTimestamp || true
           kubectl --kubeconfig "$RUNNER_TEMP/lab.kubeconfig" -n python logs deployment/pycalculator --tail=100 || true
           kubectl --kubeconfig "$RUNNER_TEMP/lab.kubeconfig" -n java logs deployment/g4g7singleton --tail=100 || true
+          for component in prometheus loki alloy grafana kube-state-metrics; do
+            kubectl --kubeconfig "$RUNNER_TEMP/lab.kubeconfig" -n observability logs deployment/$component --tail=60 || true
+          done
       - name: Remove CI cluster
         if: always()
         run: kind delete cluster --name azure-lab-ci

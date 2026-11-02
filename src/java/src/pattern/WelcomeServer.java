@@ -7,10 +7,19 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** Small HTTP adapter for the original singleton greeting demo. */
 public final class WelcomeServer {
+    private static final ConcurrentHashMap<Integer, AtomicLong> REQUESTS = new ConcurrentHashMap<>();
     private WelcomeServer() {}
+
+    private static String metrics() {
+        StringBuilder result = new StringBuilder("# HELP lab_http_requests_total Completed HTTP requests\n# TYPE lab_http_requests_total counter\n");
+        REQUESTS.forEach((status, count) -> result.append("lab_http_requests_total{status=\"").append(status).append("\"} ").append(count.get()).append("\n"));
+        return result.toString();
+    }
 
     public static HttpServer create(int port, ExecutorService executor) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 16);
@@ -29,12 +38,16 @@ public final class WelcomeServer {
             switch (exchange.getRequestURI().getPath()) {
                 case "/" -> respond(exchange, 200, SingletonPatternDemo.messages());
                 case "/healthz" -> respond(exchange, 200, "ok\n");
+                case "/metrics" -> respond(exchange, 200, metrics());
                 default -> respond(exchange, 404, "Not found\n");
             }
         }
     }
 
     private static void respond(HttpExchange exchange, int status, String message) throws IOException {
+        if (!"/metrics".equals(exchange.getRequestURI().getPath())) {
+            REQUESTS.computeIfAbsent(status, ignored -> new AtomicLong()).incrementAndGet();
+        }
         byte[] body = message.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=utf-8");
         exchange.sendResponseHeaders(status, body.length);

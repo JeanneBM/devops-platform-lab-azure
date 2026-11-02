@@ -1,0 +1,1313 @@
+{
+  "apiVersion": "v1",
+  "kind": "ConfigMap",
+  "metadata": {
+    "name": "lab-observability",
+    "namespace": "{{ .Release.Namespace }}"
+  },
+  "data": {
+    "prometheus.yml": "global:\n  evaluation_interval: 10s\n  scrape_interval: 10s\nrule_files:\n- /etc/lab/alerts.yml\nscrape_configs:\n- job_name: prometheus\n  static_configs:\n  - targets:\n    - localhost:9090\n- job_name: applications\n  static_configs:\n  - labels:\n      app: pycalculator\n      namespace: python\n    targets:\n    - pycalculator.python.svc.cluster.local:80\n  - labels:\n      app: g4g7singleton\n      namespace: java\n    targets:\n    - g4g7singleton.java.svc.cluster.local:80\n- job_name: kube-state-metrics\n  static_configs:\n  - targets:\n    - kube-state-metrics:8080\n- job_name: app-health\n  metrics_path: /probe\n  params:\n    module:\n    - http_2xx\n  relabel_configs:\n  - source_labels:\n    - __address__\n    target_label: __param_target\n  - source_labels:\n    - __param_target\n    target_label: instance\n  - replacement: blackbox:9115\n    target_label: __address__\n  static_configs:\n  - targets:\n    - http://pycalculator.python.svc.cluster.local/healthz\n    - http://g4g7singleton.java.svc.cluster.local/healthz\n",
+    "alerts.yml": "groups:\n- name: lab\n  rules:\n  - alert: LabApplicationUnavailable\n    annotations:\n      summary: Application health endpoint is unavailable\n    expr: probe_success{job=\"app-health\"} == 0\n    for: 30s\n    labels:\n      severity: critical\n  - alert: LabPodRestarting\n    annotations:\n      summary: Repeated pod container restarts\n    expr: increase(kube_pod_container_status_restarts_total[5m]) > 2\n    for: 30s\n    labels:\n      severity: warning\n  - alert: LabApplicationServerErrors\n    annotations:\n      summary: Application returned server errors\n    expr: sum by (app) (increase(lab_http_requests_total{status=~\"5..\"}[2m])) > 0\n    for: 10s\n    labels:\n      severity: warning\n",
+    "blackbox.yml": "modules:\n  http_2xx:\n    http:\n      preferred_ip_protocol: ip4\n      valid_status_codes:\n      - 200\n    prober: http\n    timeout: 5s\n",
+    "loki.yml": "analytics:\n  reporting_enabled: false\nauth_enabled: false\ncommon:\n  path_prefix: /loki\n  replication_factor: 1\n  ring:\n    kvstore:\n      store: inmemory\n  storage:\n    filesystem:\n      chunks_directory: /loki/chunks\n      rules_directory: /loki/rules\ncompactor:\n  delete_request_store: filesystem\n  retention_enabled: true\n  working_directory: /loki/compactor\nlimits_config:\n  ingestion_burst_size_mb: 4\n  ingestion_rate_mb: 2\n  max_global_streams_per_user: 1000\n  retention_period: 24h\nschema_config:\n  configs:\n  - from: '2024-04-01'\n    index:\n      period: 24h\n      prefix: index_\n    object_store: filesystem\n    schema: v13\n    store: tsdb\nserver:\n  http_listen_port: 3100\nstorage_config:\n  tsdb_shipper:\n    active_index_directory: /loki/index\n    cache_location: /loki/cache\n",
+    "config.alloy": "discovery.kubernetes \"apps\" {\n  role = \"pod\"\n  namespaces { names = [\"python\", \"java\", \"jenkins\", \"jenkins-agents\"] }\n}\ndiscovery.relabel \"apps\" {\n  targets = discovery.kubernetes.apps.targets\n  rule {\n    source_labels = [\"__meta_kubernetes_namespace\"]\n    target_label = \"namespace\"\n  }\n  rule {\n    source_labels = [\"__meta_kubernetes_pod_name\"]\n    target_label = \"pod\"\n  }\n  rule {\n    source_labels = [\"__meta_kubernetes_pod_container_name\"]\n    target_label = \"container\"\n  }\n}\nloki.source.kubernetes \"apps\" {\n  targets = discovery.relabel.apps.output\n  forward_to = [loki.write.local.receiver]\n}\nloki.write \"local\" {\n  endpoint { url = \"http://loki:3100/loki/api/v1/push\" }\n}\n",
+    "datasources.yml": "apiVersion: 1\ndatasources:\n- access: proxy\n  isDefault: true\n  name: Prometheus\n  type: prometheus\n  uid: prometheus\n  url: http://prometheus:9090\n- access: proxy\n  name: Loki\n  type: loki\n  uid: loki\n  url: http://loki:3100\n",
+    "dashboards.yml": "apiVersion: 1\nproviders:\n- folder: DevOps Lab\n  name: lab\n  options:\n    path: /var/lib/grafana/dashboards\n  type: file\n",
+    "lab.json": "{\"uid\": \"azure-devops-lab\", \"title\": \"Azure DevOps Lab\", \"schemaVersion\": 39, \"version\": 1, \"refresh\": \"10s\", \"time\": {\"from\": \"now-30m\", \"to\": \"now\"}, \"panels\": [{\"id\": 1, \"title\": \"Health probes\", \"type\": \"timeseries\", \"datasource\": {\"type\": \"prometheus\", \"uid\": \"prometheus\"}, \"gridPos\": {\"x\": 0, \"y\": 0, \"w\": 12, \"h\": 8}, \"targets\": [{\"refId\": \"A\", \"expr\": \"probe_success{job=\\\"app-health\\\"}\"}]}, {\"id\": 2, \"title\": \"HTTP requests per second\", \"type\": \"timeseries\", \"datasource\": {\"type\": \"prometheus\", \"uid\": \"prometheus\"}, \"gridPos\": {\"x\": 12, \"y\": 0, \"w\": 12, \"h\": 8}, \"targets\": [{\"refId\": \"A\", \"expr\": \"sum by (app) (rate(lab_http_requests_total[1m]))\"}]}, {\"id\": 3, \"title\": \"Desired application replicas\", \"type\": \"timeseries\", \"datasource\": {\"type\": \"prometheus\", \"uid\": \"prometheus\"}, \"gridPos\": {\"x\": 0, \"y\": 8, \"w\": 12, \"h\": 8}, \"targets\": [{\"refId\": \"A\", \"expr\": \"kube_deployment_spec_replicas\"}]}, {\"id\": 4, \"title\": \"Container restarts\", \"type\": \"timeseries\", \"datasource\": {\"type\": \"prometheus\", \"uid\": \"prometheus\"}, \"gridPos\": {\"x\": 12, \"y\": 8, \"w\": 12, \"h\": 8}, \"targets\": [{\"refId\": \"A\", \"expr\": \"kube_pod_container_status_restarts_total\"}]}, {\"id\": 5, \"title\": \"Firing alerts\", \"type\": \"stat\", \"datasource\": {\"type\": \"prometheus\", \"uid\": \"prometheus\"}, \"gridPos\": {\"x\": 0, \"y\": 16, \"w\": 12, \"h\": 8}, \"targets\": [{\"refId\": \"A\", \"expr\": \"count(ALERTS{alertstate=\\\"firing\\\"}) or vector(0)\"}]}, {\"id\": 6, \"title\": \"Python logs\", \"type\": \"logs\", \"datasource\": {\"type\": \"loki\", \"uid\": \"loki\"}, \"gridPos\": {\"x\": 12, \"y\": 16, \"w\": 12, \"h\": 8}, \"targets\": [{\"refId\": \"A\", \"expr\": \"{namespace=\\\"python\\\"}\"}]}]}"
+  }
+}
+---
+{
+  "apiVersion": "apps/v1",
+  "kind": "Deployment",
+  "metadata": {
+    "name": "prometheus",
+    "namespace": "{{ .Release.Namespace }}"
+  },
+  "spec": {
+    "replicas": 1,
+    "selector": {
+      "matchLabels": {
+        "app.kubernetes.io/name": "prometheus",
+        "app.kubernetes.io/part-of": "devops-lab-observability"
+      }
+    },
+    "template": {
+      "metadata": {
+        "labels": {
+          "app.kubernetes.io/name": "prometheus",
+          "app.kubernetes.io/part-of": "devops-lab-observability"
+        }
+      },
+      "spec": {
+        "serviceAccountName": "default",
+        "automountServiceAccountToken": false,
+        "securityContext": {
+          "runAsNonRoot": true,
+          "runAsUser": 65534,
+          "runAsGroup": 65534,
+          "fsGroup": 65534,
+          "seccompProfile": {
+            "type": "RuntimeDefault"
+          }
+        },
+        "containers": [
+          {
+            "name": "prometheus",
+            "image": "{{ .Values.images.prometheus }}",
+            "ports": [
+              {
+                "name": "http",
+                "containerPort": 9090
+              }
+            ],
+            "resources": {
+              "requests": {
+                "cpu": "50m",
+                "memory": "128Mi"
+              },
+              "limits": {
+                "cpu": "500m",
+                "memory": "512Mi"
+              }
+            },
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "readOnlyRootFilesystem": true,
+              "capabilities": {
+                "drop": [
+                  "ALL"
+                ]
+              }
+            },
+            "volumeMounts": [
+              {
+                "name": "tmp",
+                "mountPath": "/tmp"
+              },
+              {
+                "name": "config",
+                "mountPath": "/etc/lab",
+                "readOnly": true
+              },
+              {
+                "name": "data",
+                "mountPath": "/prometheus"
+              }
+            ],
+            "args": [
+              "--config.file=/etc/lab/prometheus.yml",
+              "--storage.tsdb.path=/prometheus",
+              "--storage.tsdb.retention.time=6h",
+              "--storage.tsdb.retention.size=256MB"
+            ],
+            "readinessProbe": {
+              "httpGet": {
+                "path": "/-/ready",
+                "port": "http"
+              },
+              "initialDelaySeconds": 5,
+              "periodSeconds": 5,
+              "failureThreshold": 24
+            }
+          }
+        ],
+        "volumes": [
+          {
+            "name": "tmp",
+            "emptyDir": {
+              "sizeLimit": "64Mi"
+            }
+          },
+          {
+            "name": "config",
+            "configMap": {
+              "name": "lab-observability"
+            }
+          },
+          {
+            "name": "data",
+            "emptyDir": {
+              "sizeLimit": "1Gi"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+---
+{
+  "apiVersion": "v1",
+  "kind": "Service",
+  "metadata": {
+    "name": "prometheus",
+    "namespace": "{{ .Release.Namespace }}"
+  },
+  "spec": {
+    "type": "ClusterIP",
+    "selector": {
+      "app.kubernetes.io/name": "prometheus",
+      "app.kubernetes.io/part-of": "devops-lab-observability"
+    },
+    "ports": [
+      {
+        "name": "http",
+        "port": 9090,
+        "targetPort": "http"
+      }
+    ]
+  }
+}
+---
+{
+  "apiVersion": "apps/v1",
+  "kind": "Deployment",
+  "metadata": {
+    "name": "blackbox",
+    "namespace": "{{ .Release.Namespace }}"
+  },
+  "spec": {
+    "replicas": 1,
+    "selector": {
+      "matchLabels": {
+        "app.kubernetes.io/name": "blackbox",
+        "app.kubernetes.io/part-of": "devops-lab-observability"
+      }
+    },
+    "template": {
+      "metadata": {
+        "labels": {
+          "app.kubernetes.io/name": "blackbox",
+          "app.kubernetes.io/part-of": "devops-lab-observability"
+        }
+      },
+      "spec": {
+        "serviceAccountName": "default",
+        "automountServiceAccountToken": false,
+        "securityContext": {
+          "runAsNonRoot": true,
+          "runAsUser": 65534,
+          "runAsGroup": 65534,
+          "fsGroup": 65534,
+          "seccompProfile": {
+            "type": "RuntimeDefault"
+          }
+        },
+        "containers": [
+          {
+            "name": "blackbox",
+            "image": "{{ .Values.images.blackbox }}",
+            "ports": [
+              {
+                "name": "http",
+                "containerPort": 9115
+              }
+            ],
+            "resources": {
+              "requests": {
+                "cpu": "50m",
+                "memory": "32Mi"
+              },
+              "limits": {
+                "cpu": "500m",
+                "memory": "64Mi"
+              }
+            },
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "readOnlyRootFilesystem": true,
+              "capabilities": {
+                "drop": [
+                  "ALL"
+                ]
+              }
+            },
+            "volumeMounts": [
+              {
+                "name": "tmp",
+                "mountPath": "/tmp"
+              },
+              {
+                "name": "config",
+                "mountPath": "/etc/lab",
+                "readOnly": true
+              }
+            ],
+            "args": [
+              "--config.file=/etc/lab/blackbox.yml"
+            ],
+            "readinessProbe": {
+              "httpGet": {
+                "path": "/-/healthy",
+                "port": "http"
+              },
+              "initialDelaySeconds": 5,
+              "periodSeconds": 5,
+              "failureThreshold": 24
+            }
+          }
+        ],
+        "volumes": [
+          {
+            "name": "tmp",
+            "emptyDir": {
+              "sizeLimit": "64Mi"
+            }
+          },
+          {
+            "name": "config",
+            "configMap": {
+              "name": "lab-observability"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+---
+{
+  "apiVersion": "v1",
+  "kind": "Service",
+  "metadata": {
+    "name": "blackbox",
+    "namespace": "{{ .Release.Namespace }}"
+  },
+  "spec": {
+    "type": "ClusterIP",
+    "selector": {
+      "app.kubernetes.io/name": "blackbox",
+      "app.kubernetes.io/part-of": "devops-lab-observability"
+    },
+    "ports": [
+      {
+        "name": "http",
+        "port": 9115,
+        "targetPort": "http"
+      }
+    ]
+  }
+}
+---
+{
+  "apiVersion": "apps/v1",
+  "kind": "Deployment",
+  "metadata": {
+    "name": "loki",
+    "namespace": "{{ .Release.Namespace }}"
+  },
+  "spec": {
+    "replicas": 1,
+    "selector": {
+      "matchLabels": {
+        "app.kubernetes.io/name": "loki",
+        "app.kubernetes.io/part-of": "devops-lab-observability"
+      }
+    },
+    "template": {
+      "metadata": {
+        "labels": {
+          "app.kubernetes.io/name": "loki",
+          "app.kubernetes.io/part-of": "devops-lab-observability"
+        }
+      },
+      "spec": {
+        "serviceAccountName": "default",
+        "automountServiceAccountToken": false,
+        "securityContext": {
+          "runAsNonRoot": true,
+          "runAsUser": 10001,
+          "runAsGroup": 10001,
+          "fsGroup": 10001,
+          "seccompProfile": {
+            "type": "RuntimeDefault"
+          }
+        },
+        "containers": [
+          {
+            "name": "loki",
+            "image": "{{ .Values.images.loki }}",
+            "ports": [
+              {
+                "name": "http",
+                "containerPort": 3100
+              }
+            ],
+            "resources": {
+              "requests": {
+                "cpu": "50m",
+                "memory": "128Mi"
+              },
+              "limits": {
+                "cpu": "500m",
+                "memory": "512Mi"
+              }
+            },
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "readOnlyRootFilesystem": true,
+              "capabilities": {
+                "drop": [
+                  "ALL"
+                ]
+              }
+            },
+            "volumeMounts": [
+              {
+                "name": "tmp",
+                "mountPath": "/tmp"
+              },
+              {
+                "name": "config",
+                "mountPath": "/etc/lab",
+                "readOnly": true
+              },
+              {
+                "name": "data",
+                "mountPath": "/loki"
+              }
+            ],
+            "args": [
+              "-config.file=/etc/lab/loki.yml"
+            ],
+            "readinessProbe": {
+              "httpGet": {
+                "path": "/ready",
+                "port": "http"
+              },
+              "initialDelaySeconds": 5,
+              "periodSeconds": 5,
+              "failureThreshold": 24
+            }
+          }
+        ],
+        "volumes": [
+          {
+            "name": "tmp",
+            "emptyDir": {
+              "sizeLimit": "64Mi"
+            }
+          },
+          {
+            "name": "config",
+            "configMap": {
+              "name": "lab-observability"
+            }
+          },
+          {
+            "name": "data",
+            "emptyDir": {
+              "sizeLimit": "1Gi"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+---
+{
+  "apiVersion": "v1",
+  "kind": "Service",
+  "metadata": {
+    "name": "loki",
+    "namespace": "{{ .Release.Namespace }}"
+  },
+  "spec": {
+    "type": "ClusterIP",
+    "selector": {
+      "app.kubernetes.io/name": "loki",
+      "app.kubernetes.io/part-of": "devops-lab-observability"
+    },
+    "ports": [
+      {
+        "name": "http",
+        "port": 3100,
+        "targetPort": "http"
+      }
+    ]
+  }
+}
+---
+{
+  "apiVersion": "apps/v1",
+  "kind": "Deployment",
+  "metadata": {
+    "name": "alloy",
+    "namespace": "{{ .Release.Namespace }}"
+  },
+  "spec": {
+    "replicas": 1,
+    "selector": {
+      "matchLabels": {
+        "app.kubernetes.io/name": "alloy",
+        "app.kubernetes.io/part-of": "devops-lab-observability"
+      }
+    },
+    "template": {
+      "metadata": {
+        "labels": {
+          "app.kubernetes.io/name": "alloy",
+          "app.kubernetes.io/part-of": "devops-lab-observability"
+        }
+      },
+      "spec": {
+        "serviceAccountName": "alloy",
+        "automountServiceAccountToken": true,
+        "securityContext": {
+          "runAsNonRoot": true,
+          "runAsUser": 473,
+          "runAsGroup": 473,
+          "fsGroup": 473,
+          "seccompProfile": {
+            "type": "RuntimeDefault"
+          }
+        },
+        "containers": [
+          {
+            "name": "alloy",
+            "image": "{{ .Values.images.alloy }}",
+            "ports": [
+              {
+                "name": "http",
+                "containerPort": 12345
+              }
+            ],
+            "resources": {
+              "requests": {
+                "cpu": "50m",
+                "memory": "128Mi"
+              },
+              "limits": {
+                "cpu": "500m",
+                "memory": "256Mi"
+              }
+            },
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "readOnlyRootFilesystem": true,
+              "capabilities": {
+                "drop": [
+                  "ALL"
+                ]
+              }
+            },
+            "volumeMounts": [
+              {
+                "name": "tmp",
+                "mountPath": "/tmp"
+              },
+              {
+                "name": "config",
+                "mountPath": "/etc/lab",
+                "readOnly": true
+              },
+              {
+                "name": "data",
+                "mountPath": "/var/lib/alloy"
+              }
+            ],
+            "args": [
+              "run",
+              "--server.http.listen-addr=0.0.0.0:12345",
+              "--storage.path=/var/lib/alloy",
+              "/etc/lab/config.alloy"
+            ],
+            "readinessProbe": {
+              "httpGet": {
+                "path": "/-/ready",
+                "port": "http"
+              },
+              "initialDelaySeconds": 5,
+              "periodSeconds": 5,
+              "failureThreshold": 24
+            }
+          }
+        ],
+        "volumes": [
+          {
+            "name": "tmp",
+            "emptyDir": {
+              "sizeLimit": "64Mi"
+            }
+          },
+          {
+            "name": "config",
+            "configMap": {
+              "name": "lab-observability"
+            }
+          },
+          {
+            "name": "data",
+            "emptyDir": {
+              "sizeLimit": "128Mi"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+---
+{
+  "apiVersion": "v1",
+  "kind": "Service",
+  "metadata": {
+    "name": "alloy",
+    "namespace": "{{ .Release.Namespace }}"
+  },
+  "spec": {
+    "type": "ClusterIP",
+    "selector": {
+      "app.kubernetes.io/name": "alloy",
+      "app.kubernetes.io/part-of": "devops-lab-observability"
+    },
+    "ports": [
+      {
+        "name": "http",
+        "port": 12345,
+        "targetPort": "http"
+      }
+    ]
+  }
+}
+---
+{
+  "apiVersion": "apps/v1",
+  "kind": "Deployment",
+  "metadata": {
+    "name": "grafana",
+    "namespace": "{{ .Release.Namespace }}"
+  },
+  "spec": {
+    "replicas": 1,
+    "selector": {
+      "matchLabels": {
+        "app.kubernetes.io/name": "grafana",
+        "app.kubernetes.io/part-of": "devops-lab-observability"
+      }
+    },
+    "template": {
+      "metadata": {
+        "labels": {
+          "app.kubernetes.io/name": "grafana",
+          "app.kubernetes.io/part-of": "devops-lab-observability"
+        }
+      },
+      "spec": {
+        "serviceAccountName": "default",
+        "automountServiceAccountToken": false,
+        "securityContext": {
+          "runAsNonRoot": true,
+          "runAsUser": 472,
+          "runAsGroup": 472,
+          "fsGroup": 472,
+          "seccompProfile": {
+            "type": "RuntimeDefault"
+          }
+        },
+        "containers": [
+          {
+            "name": "grafana",
+            "image": "{{ .Values.images.grafana }}",
+            "ports": [
+              {
+                "name": "http",
+                "containerPort": 3000
+              }
+            ],
+            "resources": {
+              "requests": {
+                "cpu": "50m",
+                "memory": "128Mi"
+              },
+              "limits": {
+                "cpu": "500m",
+                "memory": "256Mi"
+              }
+            },
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "readOnlyRootFilesystem": true,
+              "capabilities": {
+                "drop": [
+                  "ALL"
+                ]
+              }
+            },
+            "volumeMounts": [
+              {
+                "name": "tmp",
+                "mountPath": "/tmp"
+              },
+              {
+                "name": "config",
+                "mountPath": "/etc/grafana/provisioning/datasources/datasources.yml",
+                "readOnly": true,
+                "subPath": "datasources.yml"
+              },
+              {
+                "name": "config",
+                "mountPath": "/etc/grafana/provisioning/dashboards/dashboards.yml",
+                "readOnly": true,
+                "subPath": "dashboards.yml"
+              },
+              {
+                "name": "config",
+                "mountPath": "/var/lib/grafana/dashboards/lab.json",
+                "readOnly": true,
+                "subPath": "lab.json"
+              },
+              {
+                "name": "data",
+                "mountPath": "/var/lib/grafana"
+              }
+            ],
+            "env": [
+              {
+                "name": "GF_SECURITY_ADMIN_PASSWORD",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "name": "grafana-admin",
+                    "key": "password"
+                  }
+                }
+              },
+              {
+                "name": "GF_USERS_ALLOW_SIGN_UP",
+                "value": "false"
+              },
+              {
+                "name": "GF_ANALYTICS_REPORTING_ENABLED",
+                "value": "false"
+              },
+              {
+                "name": "GF_ANALYTICS_CHECK_FOR_UPDATES",
+                "value": "false"
+              },
+              {
+                "name": "GF_LOG_MODE",
+                "value": "console"
+              }
+            ],
+            "readinessProbe": {
+              "httpGet": {
+                "path": "/api/health",
+                "port": "http"
+              },
+              "initialDelaySeconds": 5,
+              "periodSeconds": 5,
+              "failureThreshold": 24
+            }
+          }
+        ],
+        "volumes": [
+          {
+            "name": "tmp",
+            "emptyDir": {
+              "sizeLimit": "64Mi"
+            }
+          },
+          {
+            "name": "config",
+            "configMap": {
+              "name": "lab-observability"
+            }
+          },
+          {
+            "name": "data",
+            "emptyDir": {
+              "sizeLimit": "256Mi"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+---
+{
+  "apiVersion": "v1",
+  "kind": "Service",
+  "metadata": {
+    "name": "grafana",
+    "namespace": "{{ .Release.Namespace }}"
+  },
+  "spec": {
+    "type": "ClusterIP",
+    "selector": {
+      "app.kubernetes.io/name": "grafana",
+      "app.kubernetes.io/part-of": "devops-lab-observability"
+    },
+    "ports": [
+      {
+        "name": "http",
+        "port": 3000,
+        "targetPort": "http"
+      }
+    ]
+  }
+}
+---
+{
+  "apiVersion": "apps/v1",
+  "kind": "Deployment",
+  "metadata": {
+    "name": "kube-state-metrics",
+    "namespace": "{{ .Release.Namespace }}"
+  },
+  "spec": {
+    "replicas": 1,
+    "selector": {
+      "matchLabels": {
+        "app.kubernetes.io/name": "kube-state-metrics",
+        "app.kubernetes.io/part-of": "devops-lab-observability"
+      }
+    },
+    "template": {
+      "metadata": {
+        "labels": {
+          "app.kubernetes.io/name": "kube-state-metrics",
+          "app.kubernetes.io/part-of": "devops-lab-observability"
+        }
+      },
+      "spec": {
+        "serviceAccountName": "kube-state-metrics",
+        "automountServiceAccountToken": true,
+        "securityContext": {
+          "runAsNonRoot": true,
+          "runAsUser": 65534,
+          "runAsGroup": 65534,
+          "fsGroup": 65534,
+          "seccompProfile": {
+            "type": "RuntimeDefault"
+          }
+        },
+        "containers": [
+          {
+            "name": "kube-state-metrics",
+            "image": "{{ .Values.images.kubeStateMetrics }}",
+            "ports": [
+              {
+                "name": "http",
+                "containerPort": 8080
+              }
+            ],
+            "resources": {
+              "requests": {
+                "cpu": "50m",
+                "memory": "32Mi"
+              },
+              "limits": {
+                "cpu": "500m",
+                "memory": "128Mi"
+              }
+            },
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "readOnlyRootFilesystem": true,
+              "capabilities": {
+                "drop": [
+                  "ALL"
+                ]
+              }
+            },
+            "volumeMounts": [
+              {
+                "name": "tmp",
+                "mountPath": "/tmp"
+              }
+            ],
+            "args": [
+              "--namespaces=python,java,jenkins,jenkins-agents",
+              "--resources=pods,deployments,statefulsets,persistentvolumeclaims"
+            ],
+            "readinessProbe": {
+              "httpGet": {
+                "path": "/metrics",
+                "port": "http"
+              },
+              "initialDelaySeconds": 5,
+              "periodSeconds": 5,
+              "failureThreshold": 24
+            }
+          }
+        ],
+        "volumes": [
+          {
+            "name": "tmp",
+            "emptyDir": {
+              "sizeLimit": "64Mi"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+---
+{
+  "apiVersion": "v1",
+  "kind": "Service",
+  "metadata": {
+    "name": "kube-state-metrics",
+    "namespace": "{{ .Release.Namespace }}"
+  },
+  "spec": {
+    "type": "ClusterIP",
+    "selector": {
+      "app.kubernetes.io/name": "kube-state-metrics",
+      "app.kubernetes.io/part-of": "devops-lab-observability"
+    },
+    "ports": [
+      {
+        "name": "http",
+        "port": 8080,
+        "targetPort": "http"
+      }
+    ]
+  }
+}
+---
+{
+  "apiVersion": "v1",
+  "kind": "ServiceAccount",
+  "metadata": {
+    "name": "alloy",
+    "namespace": "{{ .Release.Namespace }}"
+  }
+}
+---
+{
+  "apiVersion": "v1",
+  "kind": "ServiceAccount",
+  "metadata": {
+    "name": "kube-state-metrics",
+    "namespace": "{{ .Release.Namespace }}"
+  }
+}
+---
+{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "Role",
+  "metadata": {
+    "name": "observe-alloy",
+    "namespace": "python"
+  },
+  "rules": [
+    {
+      "apiGroups": [
+        ""
+      ],
+      "resources": [
+        "pods",
+        "pods/log"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ]
+    }
+  ]
+}
+---
+{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "RoleBinding",
+  "metadata": {
+    "name": "observe-alloy",
+    "namespace": "python"
+  },
+  "subjects": [
+    {
+      "kind": "ServiceAccount",
+      "name": "alloy",
+      "namespace": "{{ .Release.Namespace }}"
+    }
+  ],
+  "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "observe-alloy"
+  }
+}
+---
+{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "Role",
+  "metadata": {
+    "name": "observe-kube-state-metrics",
+    "namespace": "python"
+  },
+  "rules": [
+    {
+      "apiGroups": [
+        ""
+      ],
+      "resources": [
+        "pods",
+        "persistentvolumeclaims"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ]
+    },
+    {
+      "apiGroups": [
+        "apps"
+      ],
+      "resources": [
+        "deployments",
+        "statefulsets"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ]
+    }
+  ]
+}
+---
+{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "RoleBinding",
+  "metadata": {
+    "name": "observe-kube-state-metrics",
+    "namespace": "python"
+  },
+  "subjects": [
+    {
+      "kind": "ServiceAccount",
+      "name": "kube-state-metrics",
+      "namespace": "{{ .Release.Namespace }}"
+    }
+  ],
+  "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "observe-kube-state-metrics"
+  }
+}
+---
+{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "Role",
+  "metadata": {
+    "name": "observe-alloy",
+    "namespace": "java"
+  },
+  "rules": [
+    {
+      "apiGroups": [
+        ""
+      ],
+      "resources": [
+        "pods",
+        "pods/log"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ]
+    }
+  ]
+}
+---
+{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "RoleBinding",
+  "metadata": {
+    "name": "observe-alloy",
+    "namespace": "java"
+  },
+  "subjects": [
+    {
+      "kind": "ServiceAccount",
+      "name": "alloy",
+      "namespace": "{{ .Release.Namespace }}"
+    }
+  ],
+  "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "observe-alloy"
+  }
+}
+---
+{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "Role",
+  "metadata": {
+    "name": "observe-kube-state-metrics",
+    "namespace": "java"
+  },
+  "rules": [
+    {
+      "apiGroups": [
+        ""
+      ],
+      "resources": [
+        "pods",
+        "persistentvolumeclaims"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ]
+    },
+    {
+      "apiGroups": [
+        "apps"
+      ],
+      "resources": [
+        "deployments",
+        "statefulsets"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ]
+    }
+  ]
+}
+---
+{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "RoleBinding",
+  "metadata": {
+    "name": "observe-kube-state-metrics",
+    "namespace": "java"
+  },
+  "subjects": [
+    {
+      "kind": "ServiceAccount",
+      "name": "kube-state-metrics",
+      "namespace": "{{ .Release.Namespace }}"
+    }
+  ],
+  "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "observe-kube-state-metrics"
+  }
+}
+---
+{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "Role",
+  "metadata": {
+    "name": "observe-alloy",
+    "namespace": "jenkins"
+  },
+  "rules": [
+    {
+      "apiGroups": [
+        ""
+      ],
+      "resources": [
+        "pods",
+        "pods/log"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ]
+    }
+  ]
+}
+---
+{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "RoleBinding",
+  "metadata": {
+    "name": "observe-alloy",
+    "namespace": "jenkins"
+  },
+  "subjects": [
+    {
+      "kind": "ServiceAccount",
+      "name": "alloy",
+      "namespace": "{{ .Release.Namespace }}"
+    }
+  ],
+  "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "observe-alloy"
+  }
+}
+---
+{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "Role",
+  "metadata": {
+    "name": "observe-kube-state-metrics",
+    "namespace": "jenkins"
+  },
+  "rules": [
+    {
+      "apiGroups": [
+        ""
+      ],
+      "resources": [
+        "pods",
+        "persistentvolumeclaims"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ]
+    },
+    {
+      "apiGroups": [
+        "apps"
+      ],
+      "resources": [
+        "deployments",
+        "statefulsets"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ]
+    }
+  ]
+}
+---
+{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "RoleBinding",
+  "metadata": {
+    "name": "observe-kube-state-metrics",
+    "namespace": "jenkins"
+  },
+  "subjects": [
+    {
+      "kind": "ServiceAccount",
+      "name": "kube-state-metrics",
+      "namespace": "{{ .Release.Namespace }}"
+    }
+  ],
+  "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "observe-kube-state-metrics"
+  }
+}
+---
+{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "Role",
+  "metadata": {
+    "name": "observe-alloy",
+    "namespace": "jenkins-agents"
+  },
+  "rules": [
+    {
+      "apiGroups": [
+        ""
+      ],
+      "resources": [
+        "pods",
+        "pods/log"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ]
+    }
+  ]
+}
+---
+{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "RoleBinding",
+  "metadata": {
+    "name": "observe-alloy",
+    "namespace": "jenkins-agents"
+  },
+  "subjects": [
+    {
+      "kind": "ServiceAccount",
+      "name": "alloy",
+      "namespace": "{{ .Release.Namespace }}"
+    }
+  ],
+  "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "observe-alloy"
+  }
+}
+---
+{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "Role",
+  "metadata": {
+    "name": "observe-kube-state-metrics",
+    "namespace": "jenkins-agents"
+  },
+  "rules": [
+    {
+      "apiGroups": [
+        ""
+      ],
+      "resources": [
+        "pods",
+        "persistentvolumeclaims"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ]
+    },
+    {
+      "apiGroups": [
+        "apps"
+      ],
+      "resources": [
+        "deployments",
+        "statefulsets"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ]
+    }
+  ]
+}
+---
+{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "RoleBinding",
+  "metadata": {
+    "name": "observe-kube-state-metrics",
+    "namespace": "jenkins-agents"
+  },
+  "subjects": [
+    {
+      "kind": "ServiceAccount",
+      "name": "kube-state-metrics",
+      "namespace": "{{ .Release.Namespace }}"
+    }
+  ],
+  "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "Role",
+    "name": "observe-kube-state-metrics"
+  }
+}

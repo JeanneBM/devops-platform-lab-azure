@@ -36,6 +36,9 @@ public final class WelcomeServerTest {
             var post = client.send(HttpRequest.newBuilder(URI.create(base + "/"))
                     .POST(HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofString());
             check(post.statusCode() == 405, "Unsupported method");
+            var metrics = client.send(HttpRequest.newBuilder(URI.create(base + "/metrics")).build(),
+                    HttpResponse.BodyHandlers.ofString());
+            check(metrics.statusCode() == 200 && metrics.body().contains("lab_http_requests_total{status=\"200\"}"), "Prometheus counters");
             System.out.println("Java singleton and HTTP tests passed");
         } finally {
             server.stop(0);

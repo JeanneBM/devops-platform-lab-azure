@@ -1,0 +1,5 @@
+apiVersion: v2
+name: observability
+version: 0.1.0
+type: application
+description: Bounded ephemeral metrics, logs, dashboards and alerts for the lab

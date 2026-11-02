@@ -1,0 +1,7 @@
+images:
+  alloy: grafana/alloy:v1.21.3
+  blackbox: prom/blackbox-exporter:v0.29.1
+  grafana: grafana/grafana:13.3.0
+  kubeStateMetrics: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.20.0
+  loki: grafana/loki:3.7.9
+  prometheus: prom/prometheus:v3.15.1

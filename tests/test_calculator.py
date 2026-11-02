@@ -47,3 +47,11 @@ def test_invalid_input_is_a_client_error(client, data, message):
 
 def test_calculations_requires_post(client):
     assert client.get('/calculations').status_code == 405
+
+
+def test_prometheus_metrics(client):
+    client.get('/healthz')
+    response = client.get('/metrics')
+    assert response.status_code == 200
+    assert b'lab_http_requests_total' in response.data
+    assert b'lab_http_request_duration_seconds' in response.data
