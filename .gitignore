@@ -1,0 +1,12 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+*.auto.tfvars
+.local/
+crash.log
+*.kubeconfig
+*.backup
+*.tar.gz

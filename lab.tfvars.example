@@ -1,0 +1,9 @@
+# Copy to lab.tfvars (ignored by Git). Replace every placeholder.
+subscription_id    = "00000000-0000-0000-0000-000000000000"
+operator_object_id = "00000000-0000-0000-0000-000000000000"
+operator_cidr      = "203.0.113.10/32"
+location           = "polandcentral"
+prefix             = "devopslab"
+suffix             = "replace"
+node_size          = "Standard_D4as_v5"
+kubernetes_version = "REPLACE_WITH_SUPPORTED_REGIONAL_VERSION"

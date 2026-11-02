@@ -1,0 +1,37 @@
+name: Validate preparation
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - name: Format and validate Terraform without Azure credentials
+        run: |
+          terraform -chdir=infra fmt -check -diff
+          terraform -chdir=infra init -backend=false -input=false
+          terraform -chdir=infra validate
+      - name: Parse PowerShell scripts
+        shell: pwsh
+        run: |
+          $failed = $false
+          Get-ChildItem scripts/*.ps1 | ForEach-Object {
+            $tokens = $null
+            $parseErrors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$parseErrors)
+            if ($parseErrors.Count -gt 0) {
+              $parseErrors | ForEach-Object { Write-Host $_ }
+              $failed = $true
+            }
+          }
+          if ($failed) { throw 'PowerShell parse errors.' }
+      - name: Verify lifecycle safeguards with mocked executables
+        shell: pwsh
+        run: ./tests/Test-Lifecycle.ps1
