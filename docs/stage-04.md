@@ -71,3 +71,14 @@ a consistent offline home backup needs the credential key and matching admin Sec
 file ownership matters on restore; a backup is only useful after a recovery test.
 
 [Jenkins backup guidance](https://www.jenkins.io/doc/book/system-administration/backing-up/).
+
+## Stable restart behavior
+
+Jenkins installs plugins once per fresh home PVC (`initializeOnce: true`). The
+initialization marker is included in backup/recovery, so restarting a backed-up or
+restored controller does not re-download plugin dependencies or depend on an available
+update mirror. JCasC reads YAML directly from the mounted /var/jenkins_config ConfigMap;
+configuration changes still apply on restart without an auto-reload sidecar. Updating
+plugins is a deliberate separate upgrade exercise against a backed-up/test home, not
+an implicit side effect of backup or restart. The initial empty controller still needs
+plugin download access. CI exposed HTTP 503 failures in repeat downloads before this fix.

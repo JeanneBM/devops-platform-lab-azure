@@ -2,6 +2,7 @@
 controller:
   image:
     tag: 2.580.2-jdk25
+  initializeOnce: true
   numExecutors: 0
   serviceType: ClusterIP
   agentListenerEnabled: false
@@ -23,6 +24,7 @@ controller:
   sidecars:
     configAutoReload:
       enabled: false
+      folder: /var/jenkins_config
   containerEnv:
     - name: LAB_SOURCE_REF
       value: main
