@@ -20,7 +20,8 @@ def source = new GitSCM(
     [new UserRemoteConfig('https://github.com/JeanneBM/devops-platform-lab-azure.git', null, null, null)],
     [new BranchSpec(revision)], null, null, [])
 def definition = new CpsScmFlowDefinition(source, 'Jenkinsfile')
-definition.setLightweight(true)
+// Full checkout supports an exact commit rather than treating SHA as a branch name.
+definition.setLightweight(false)
 job.setDefinition(definition)
 job.addProperty(new ParametersDefinitionProperty(
     new StringParameterDefinition('SOURCE_REF', revision, 'Shared library commit (same revision as pipeline by default)')))
