@@ -11,7 +11,7 @@ do {
     $url = $page.NextPageLink
 } while ($url)
 $rates = @($items | Where-Object {
-    $_.isPrimaryMeterRegion -eq $true -and $_.unitOfMeasure -eq '1 Hour' -and $_.productName -notmatch 'Windows' -and
+    $_.isPrimaryMeterRegion -eq $true -and $_.unitOfMeasure -eq '1 Hour' -and $_.productName -like 'Virtual Machines*' -and $_.productName -notmatch 'Windows' -and
     $_.skuName -notmatch 'Spot|Low Priority' -and $_.meterName -notmatch 'Spot|Low Priority' -and $_.retailPrice -gt 0
 } | Select-Object -ExpandProperty retailPrice -Unique)
 if ($rates.Count -ne 1) { throw 'Cannot identify one unambiguous Linux PAYG retail rate. Review Azure Pricing Calculator before apply.' }

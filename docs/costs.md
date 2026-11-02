@@ -66,3 +66,13 @@ rate plus the labelled non-compute allowance. Start-Lab performs this read befor
 applying infrastructure. Recovery may retain an extra Jenkins disk until destruction.
 Use `scripts/Get-LabCostReport.ps1` after Cost Management data arrives to inspect
 both groups. No real subscription/billing query has been tested in CI. See stage 6.
+
+## Public retail check on 2026-11-02
+
+The Azure Retail Prices API returned USD 0.208/hour for one Linux Standard_D4as_v5
+VM in Poland Central (Virtual Machines Dasv5 Series). Two nodes for 6 hours are
+USD 2.496 compute-only. Adding the script's USD 0.90 non-compute planning allowance
+gives about USD 3.40 before tax. This is not a complete meter-by-meter quote or cap.
+The API also returned a Cloud Services product; the estimator explicitly excludes
+that product along with Windows/Spot. Re-query before deployment; prices may change.
+Source: https://prices.azure.com/api/retail/prices (filtered by region, SKU and Consumption).

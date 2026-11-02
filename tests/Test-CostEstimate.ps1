@@ -4,9 +4,10 @@ $root = Split-Path $PSScriptRoot -Parent
 function global:Invoke-RestMethod {
     param($Uri, $TimeoutSec)
     return @{ Items = @(
-        @{ unitOfMeasure = '1 Hour'; productName = 'Linux'; skuName = 'D4as v5'; meterName = 'D4as v5'; retailPrice = 0.2; isPrimaryMeterRegion = $true },
-        @{ unitOfMeasure = '1 Hour'; productName = 'Windows'; skuName = 'D4as v5'; meterName = 'D4as v5'; retailPrice = 0.4; isPrimaryMeterRegion = $true },
-        @{ unitOfMeasure = '1 Hour'; productName = 'Linux'; skuName = 'D4as v5 Spot'; meterName = 'D4as v5 Spot'; retailPrice = 0.01; isPrimaryMeterRegion = $true }
+        @{ unitOfMeasure = '1 Hour'; productName = 'Virtual Machines Dasv5 Series'; skuName = 'D4as v5'; meterName = 'D4as v5'; retailPrice = 0.2; isPrimaryMeterRegion = $true },
+        @{ unitOfMeasure = '1 Hour'; productName = 'Virtual Machines Dasv5 Series Windows'; skuName = 'D4as v5'; meterName = 'D4as v5'; retailPrice = 0.4; isPrimaryMeterRegion = $true },
+        @{ unitOfMeasure = '1 Hour'; productName = 'Linux'; skuName = 'D4as v5 Spot'; meterName = 'D4as v5 Spot'; retailPrice = 0.01; isPrimaryMeterRegion = $true },
+        @{ unitOfMeasure = '1 Hour'; productName = 'Dasv5 Series Cloud Services'; skuName = 'D4as v5'; meterName = 'D4as v5'; retailPrice = 0.392; isPrimaryMeterRegion = $true }
     ); NextPageLink = '' }
 }
 try {
