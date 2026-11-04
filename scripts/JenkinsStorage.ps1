@@ -50,7 +50,20 @@ function Remove-JenkinsMaintenance {
 
 function Protect-LabFile {
     param([string]$Path)
-    if (-not [OperatingSystem]::IsWindows()) {
+    if ([OperatingSystem]::IsWindows()) {
+        $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+        # Replace the DACL: inherited or explicit broad grants must not survive.
+        $acl = [Security.AccessControl.FileSecurity]::new()
+        $acl.SetOwner([Security.Principal.SecurityIdentifier]::new($sid))
+        $acl.SetAccessRuleProtection($true, $false)
+        $rule = [Security.AccessControl.FileSystemAccessRule]::new(
+            [Security.Principal.SecurityIdentifier]::new($sid),
+            [Security.AccessControl.FileSystemRights]::FullControl,
+            [Security.AccessControl.AccessControlType]::Allow)
+        $acl.AddAccessRule($rule)
+        Set-Acl -LiteralPath $Path -AclObject $acl
+    } else {
         [IO.File]::SetUnixFileMode($Path, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite)
     }
 }
+

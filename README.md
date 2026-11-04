@@ -84,3 +84,18 @@ sensitive local artifacts; do not commit or publish them.
 Exercises: [infrastructure](docs/stage-01.md), [Helm/rollback](docs/stage-02.md),
 [Jenkins/RBAC](docs/stage-03.md), [recovery](docs/stage-04.md),
 [observability/failures](docs/stage-05.md), [lifecycle/costs](docs/stage-06.md).
+
+
+### Startup safeguards
+
+Before `-Apply`, commit and push all changes to this repository's `origin`.
+Startup fetches origin and requires a clean working tree and a published HEAD.
+After apply, it waits up to ten minutes for Kubernetes operator authorization,
+then checks AKS-to-ACR access before deploying application releases.
+A failed apply or later deployment prints the cleanup command and rethrows the
+error; it does **not** automatically destroy resources or Jenkins data.
+Deletion verification polls for both resource groups for up to five minutes each.
+
+Backups are offline archives with a separately stored controller key, **not
+encrypted archives**. Administrator Secret values are only base64 encoded.
+Use an encrypted disk/store; file permissions alone do not encrypt a backup.

@@ -9,8 +9,8 @@ Run only after builds/queue activity has settled; do not submit new builds durin
 The archive excludes `secrets/master.key`. The controller key is copied separately
 to the operator's user-profile `.devops-lab-keys` directory. The local backup contains
 the administrator Kubernetes Secret, home archive and a SHA-256 manifest. On Unix,
-sensitive files receive mode 0600. On Windows, use a private user folder and restrict
-its NTFS ACLs. Backups are not encrypted by this script: use an encrypted disk or
+sensitive files receive mode 0600. On Windows, the script replaces each sensitive file's DACL with access for the
+current user only. Use a private user folder as well. Backups are not encrypted by this script: use an encrypted disk or
 encrypted backup store. Do not publish archives, keys or administrator Secrets.
 The SHA-256 manifest detects accidental corruption, not malicious replacement of
 both archive and manifest. Restore only trusted backups made by this lab.
@@ -82,3 +82,4 @@ configuration changes still apply on restart without an auto-reload sidecar. Upd
 plugins is a deliberate separate upgrade exercise against a backed-up/test home, not
 an implicit side effect of backup or restart. The initial empty controller still needs
 plugin download access. CI exposed HTTP 503 failures in repeat downloads before this fix.
+

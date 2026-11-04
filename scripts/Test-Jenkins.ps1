@@ -1,6 +1,6 @@
 #Requires -Version 7.2
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$Kubeconfig, [string]$AdminSecretName = '')
+param([Parameter(Mandatory)][string]$Kubeconfig, [string]$AdminSecretName = '', [string]$PluginExport = '')
 . (Join-Path $PSScriptRoot 'Common.ps1')
 $kube = (Resolve-Path -LiteralPath $Kubeconfig).Path
 if (-not $AdminSecretName) { $AdminSecretName = Get-LabJenkinsAdminSecret $kube }
@@ -45,6 +45,10 @@ try {
     }
     $inactive = @($pluginInfo.plugins | Where-Object { -not $_.active })
     if ($inactive.Count -gt 0) { throw 'Installed Jenkins plugins failed to activate. Inspect controller startup logs.' }
+    if ($PluginExport) {
+        $pluginInfo.plugins | Sort-Object shortName | ForEach-Object { "$($_.shortName):$($_.version)" } |
+            Set-Content -LiteralPath $PluginExport
+    }
     $job = Invoke-RestMethod "$base/job/lab-verify/api/json?tree=nextBuildNumber" @request
     $number = $job.nextBuildNumber
     $crumb = Invoke-RestMethod "$base/crumbIssuer/api/json" @request
@@ -105,3 +109,4 @@ try {
     $process.Dispose()
     $credential = $null
 }
+

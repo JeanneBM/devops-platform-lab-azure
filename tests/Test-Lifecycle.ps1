@@ -11,7 +11,14 @@ function global:docker { $global:LASTEXITCODE = 0 }
 function global:kubectl { $global:LASTEXITCODE = 0; 'statefulset.apps/jenkins' }
 function global:kubelogin { $global:LASTEXITCODE = 0 }
 function global:helm { $global:LASTEXITCODE = 0; 'v3.17.3' }
-function global:git { $global:LASTEXITCODE = 0; '1111111111111111111111111111111111111111' }
+function global:git {
+    $global:LASTEXITCODE = 0
+    if ($args -contains 'status') { return }
+    if ($args -contains 'get-url') { return 'https://github.com/JeanneBM/devops-platform-lab-azure.git' }
+    if ($args -contains 'fetch') { return }
+    if ($args -contains 'branch') { return 'origin/main' }
+    '1111111111111111111111111111111111111111'
+}
 function global:terraform {
     $global:LabCalls += ,@($args)
     $global:LASTEXITCODE = 0
@@ -66,3 +73,4 @@ try {
     Remove-Item function:az, function:terraform, function:docker, function:kubectl, function:kubelogin, function:helm, function:git -ErrorAction SilentlyContinue
     Remove-Variable LabCalls, FailLabPlan -Scope Global -ErrorAction SilentlyContinue
 }
+

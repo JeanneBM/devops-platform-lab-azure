@@ -12,10 +12,7 @@ if ($Apply) {
     Assert-LabTools @('docker', 'kubectl', 'kubelogin', 'helm', 'git')
     Assert-LabHelm
     Invoke-LabNative 'docker' @('info')
-    $sourceRef = & git -C $script:LabRoot rev-parse HEAD
-    if ($LASTEXITCODE -ne 0 -or $sourceRef -notmatch '^[0-9a-f]{40}$') {
-        throw 'Run from a Git checkout with a committed Jenkins pipeline.'
-    }
+    $sourceRef = Assert-LabPublishedSource
 }
 if ([bool]$RestoreBackup -ne [bool]$KeyFile) { throw 'RestoreBackup and KeyFile must be supplied together.' }
 if ($RestoreBackup) {
@@ -38,6 +35,7 @@ $estimate | Format-List | Out-Host
 $local = Join-Path $script:LabRoot '.local'
 New-Item -ItemType Directory -Force $local | Out-Null
 $estimate | ConvertTo-Json | Set-Content (Join-Path $local 'cost-estimate.json')
+try {
 Invoke-LabNative 'terraform' @("-chdir=$script:InfraRoot", 'apply', '-input=false', $plan)
 Invoke-LabNative 'terraform' @("-chdir=$script:InfraRoot", 'output')
 $outputs = Get-LabOutputs
@@ -56,9 +54,11 @@ Invoke-LabNative 'az' @('account', 'set', '--subscription', $subscription)
 Invoke-LabNative 'az' @('aks', 'get-credentials', '--subscription', $subscription,
     '--resource-group', $rg, '--name', $cluster, '--file', $kube, '--overwrite-existing')
 Invoke-LabNative 'kubelogin' @('convert-kubeconfig', '-l', 'azurecli', '--kubeconfig', $kube)
+Wait-LabClusterAccess -Kubeconfig $kube
 $tag = 'session-' + [DateTime]::UtcNow.ToString('yyyyMMddHHmmssfff')
 & (Join-Path $PSScriptRoot 'Publish-Images.ps1') -SubscriptionId $subscription `
     -AcrName $outputs.acr_name.value -Registry $outputs.acr_login_server.value -ImageTag $tag
+Wait-LabAcrAccess -Subscription $subscription -ResourceGroup $rg -Cluster $cluster -Registry $outputs.acr_login_server.value
 & (Join-Path $PSScriptRoot 'Deploy-Applications.ps1') -Registry $outputs.acr_login_server.value `
     -ImageTag $tag -Kubeconfig $kube
 & (Join-Path $PSScriptRoot 'Deploy-Jenkins.ps1') -Kubeconfig $kube -SourceRef $sourceRef
@@ -68,3 +68,11 @@ if ($RestoreBackup) {
 & (Join-Path $PSScriptRoot 'Deploy-Observability.ps1') -Kubeconfig $kube
 & (Join-Path $PSScriptRoot 'Test-Lab.ps1') -Kubeconfig $kube
 Write-Host "Applications, Jenkins and observability verified. Application tag: $tag; pipeline commit: $sourceRef."
+
+
+} catch {
+    Write-Warning 'ZASOBY MOGĄ NADAL DZIAŁAĆ I NALICZAĆ KOSZTY. Start nie wycofuje infrastruktury.'
+    Write-Warning "Cleanup: ./scripts/Stop-Lab.ps1 -ConfigFile '$config' -Destroy"
+    Write-Warning 'If cluster access or backup fails, use -DiscardJenkinsData only for disposable Jenkins data.'
+    throw
+}

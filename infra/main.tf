@@ -92,3 +92,11 @@ resource "azurerm_role_assignment" "operator_push" {
   role_definition_name = "AcrPush"
   principal_id         = var.operator_object_id
 }
+
+
+# Credential download is a control-plane permission distinct from Kubernetes RBAC.
+resource "azurerm_role_assignment" "operator_credentials" {
+  scope                = azurerm_kubernetes_cluster.lab.id
+  role_definition_name = "Azure Kubernetes Service Cluster User Role"
+  principal_id         = var.operator_object_id
+}

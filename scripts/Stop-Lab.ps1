@@ -39,10 +39,8 @@ if (-not $DiscardJenkinsData -and (Test-Path $kube)) {
 if ($DiscardJenkinsData) { Write-Warning 'Explicitly discarding Jenkins data without a new backup.' }
 Invoke-LabNative 'terraform' @("-chdir=$script:InfraRoot", 'apply', '-input=false', $plan)
 foreach ($group in $groups) {
-    $exists = & az group exists --subscription $subscription --name $group --output tsv
-    if ($LASTEXITCODE -ne 0 -or ($exists -join '').Trim() -ne 'false') {
-        throw "Cleanup not verified for $group. Investigate remaining resources and charges."
-    }
+    Wait-LabGroupDeleted -Subscription $subscription -Group $group
 }
 Write-Host 'CLEANUP VERIFIED: both resource groups are absent. Backup files and keys remain outside Azure.'
 Write-Host 'Run Get-LabCostReport.ps1 after billing data arrives; session.json is retained.' 
+

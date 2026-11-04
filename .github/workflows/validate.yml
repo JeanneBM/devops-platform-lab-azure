@@ -34,7 +34,10 @@ jobs:
           if ($failed) { throw 'PowerShell parse errors.' }
       - name: Verify lifecycle safeguards with mocked executables
         shell: pwsh
-        run: ./tests/Test-Lifecycle.ps1
+        run: |
+          ./tests/Test-Lifecycle.ps1
+          ./tests/Test-Readiness.ps1
       - name: Verify cost estimate filtering and arithmetic without network access
         shell: pwsh
         run: ./tests/Test-CostEstimate.ps1
+

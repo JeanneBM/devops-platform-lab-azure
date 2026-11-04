@@ -37,7 +37,11 @@ jobs:
       - name: Prove RBAC, shared library, real dynamic agent build and cleanup
         shell: pwsh
         run: |
-          ./scripts/Test-Jenkins.ps1 -Kubeconfig (Join-Path $env:RUNNER_TEMP 'jenkins.kubeconfig')
+          ./scripts/Test-Jenkins.ps1 -Kubeconfig (Join-Path $env:RUNNER_TEMP 'jenkins.kubeconfig') -PluginExport (Join-Path $env:RUNNER_TEMP 'jenkins-plugins.txt')
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jenkins-plugins
+          path: ${{ runner.temp }}/jenkins-plugins.txt
       - name: Backup offline and restore to a new PVC
         shell: pwsh
         run: |
@@ -61,3 +65,4 @@ jobs:
       - name: Remove CI cluster
         if: always()
         run: kind delete cluster --name jenkins-lab-ci
+
