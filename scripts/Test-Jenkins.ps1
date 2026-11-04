@@ -45,6 +45,10 @@ try {
     }
     $inactive = @($pluginInfo.plugins | Where-Object { -not $_.active })
     if ($inactive.Count -gt 0) { throw 'Installed Jenkins plugins failed to activate. Inspect controller startup logs.' }
+    $expectedPlugins = @(Get-Content (Join-Path $script:LabRoot 'jenkins/plugins.lock.txt') | Where-Object { $_.Trim() })
+    $actualPlugins = @($pluginInfo.plugins | ForEach-Object { "$($_.shortName):$($_.version)" })
+    $pluginDiff = Compare-Object $expectedPlugins $actualPlugins
+    if ($pluginDiff) { throw 'Installed Jenkins plugin versions differ from jenkins/plugins.lock.txt.' }
     if ($PluginExport) {
         $pluginInfo.plugins | Sort-Object shortName | ForEach-Object { "$($_.shortName):$($_.version)" } |
             Set-Content -LiteralPath $PluginExport

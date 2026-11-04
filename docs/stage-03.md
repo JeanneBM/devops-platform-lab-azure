@@ -153,3 +153,14 @@ sanitize it before publishing. Current code is not a production Jenkins platform
 References: [Kubernetes plugin](https://plugins.jenkins.io/kubernetes/),
 [shared libraries](https://www.jenkins.io/doc/book/pipeline/shared-libraries/),
 [upstream Helm chart](https://github.com/jenkinsci/helm-charts/tree/main/charts/jenkins).
+
+
+### Plugin lock
+
+`jenkins/plugins.lock.txt` records the complete active plugin closure exported
+from the real Jenkins instance in CI run 41833542465 (2026-11-04).
+The identical list is supplied in `helm-values/jenkins.yaml` with both
+latest-plugin options disabled. The integration test rejects missing, extra
+or changed versions. Update the lock and Helm list together during a deliberate
+plugin upgrade; repeat a fresh install and recovery test before accepting it.
+The workflow exports the installed list as the `jenkins-plugins` artifact.
