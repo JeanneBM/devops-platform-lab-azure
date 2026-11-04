@@ -51,8 +51,10 @@ $kube = Join-Path $local 'aks.kubeconfig'
     cluster = $cluster; sourceRef = $sourceRef; startedUtc = [DateTime]::UtcNow.ToString('o')
 } | ConvertTo-Json | Set-Content (Join-Path $local 'session.json')
 Invoke-LabNative 'az' @('account', 'set', '--subscription', $subscription)
-Invoke-LabNative 'az' @('aks', 'get-credentials', '--subscription', $subscription,
-    '--resource-group', $rg, '--name', $cluster, '--file', $kube, '--overwrite-existing')
+Wait-LabCheck -Description 'AKS credential-download role propagation (up to 10 minutes)' -Check {
+    & az aks get-credentials --subscription $subscription --resource-group $rg --name $cluster --file $kube --overwrite-existing | Out-Host
+    return ($LASTEXITCODE -eq 0)
+}
 Invoke-LabNative 'kubelogin' @('convert-kubeconfig', '-l', 'azurecli', '--kubeconfig', $kube)
 Wait-LabClusterAccess -Kubeconfig $kube
 $tag = 'session-' + [DateTime]::UtcNow.ToString('yyyyMMddHHmmssfff')
