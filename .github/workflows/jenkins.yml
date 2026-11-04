@@ -8,6 +8,9 @@ jobs:
   jenkins:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      # Jenkins fetches published branch commits, not GitHub's synthetic PR merge.
+      LAB_SOURCE_REF: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4.3.0
@@ -33,7 +36,7 @@ jobs:
       - name: Install pinned Jenkins and namespace-scoped permissions
         shell: pwsh
         run: |
-          ./scripts/Deploy-Jenkins.ps1 -Kubeconfig (Join-Path $env:RUNNER_TEMP 'jenkins.kubeconfig') -SourceRef $env:GITHUB_SHA -StorageClass standard
+          ./scripts/Deploy-Jenkins.ps1 -Kubeconfig (Join-Path $env:RUNNER_TEMP 'jenkins.kubeconfig') -SourceRef $env:LAB_SOURCE_REF -StorageClass standard
       - name: Prove RBAC, shared library, real dynamic agent build and cleanup
         shell: pwsh
         run: |
@@ -45,7 +48,7 @@ jobs:
       - name: Backup offline and restore to a new PVC
         shell: pwsh
         run: |
-          ./scripts/Test-JenkinsRecovery.ps1 -Kubeconfig (Join-Path $env:RUNNER_TEMP 'jenkins.kubeconfig') -SourceRef $env:GITHUB_SHA -StorageClass standard
+          ./scripts/Test-JenkinsRecovery.ps1 -Kubeconfig (Join-Path $env:RUNNER_TEMP 'jenkins.kubeconfig') -SourceRef $env:LAB_SOURCE_REF -StorageClass standard
       - name: Verify the full lab after Jenkins recovery, including outage and alert resolution
         shell: pwsh
         run: |
