@@ -34,7 +34,7 @@ try {
     Wait-LabAcrAccess -Subscription fake -ResourceGroup fake -Cluster fake -Registry fake
     Assert-Test ($global:Checks -eq 2) 'Failed ACR diagnostic was not retried.'
     Assert-Test ($env:AAD_LOGIN_METHOD -eq 'devicecode') 'Caller login method was not restored after success.'
-    [Environment]::SetEnvironmentVariable('AAD_LOGIN_METHOD', $null, 'Process')
+    Remove-Item Env:AAD_LOGIN_METHOD -ErrorAction SilentlyContinue
     Wait-LabAcrAccess -Subscription fake -ResourceGroup fake -Cluster fake -Registry fake
     Assert-Test ($null -eq [Environment]::GetEnvironmentVariable('AAD_LOGIN_METHOD', 'Process')) 'Absent login override was not restored.'
     $env:AAD_LOGIN_METHOD = 'interactive'
@@ -74,7 +74,11 @@ try {
     }
     Write-Host 'Readiness and Git preflight tests passed (no network).'
 } finally {
-    [Environment]::SetEnvironmentVariable('AAD_LOGIN_METHOD', $originalLoginMethod, 'Process')
+    if ($null -eq $originalLoginMethod) {
+        Remove-Item Env:AAD_LOGIN_METHOD -ErrorAction SilentlyContinue
+    } else {
+        [Environment]::SetEnvironmentVariable('AAD_LOGIN_METHOD', $originalLoginMethod, 'Process')
+    }
     Remove-Item function:Start-Sleep, function:kubectl, function:az, function:git -ErrorAction SilentlyContinue
     Remove-Variable Checks, Dirty, Published -Scope Global -ErrorAction SilentlyContinue
 }

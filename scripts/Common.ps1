@@ -148,7 +148,11 @@ function Wait-LabAcrAccess {
             return ($LASTEXITCODE -eq 0)
         }
     } finally {
-        [Environment]::SetEnvironmentVariable('AAD_LOGIN_METHOD', $previousLoginMethod, 'Process')
+        if ($null -eq $previousLoginMethod) {
+            Remove-Item Env:AAD_LOGIN_METHOD -ErrorAction SilentlyContinue
+        } else {
+            [Environment]::SetEnvironmentVariable('AAD_LOGIN_METHOD', $previousLoginMethod, 'Process')
+        }
     }
 }
 
