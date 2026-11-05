@@ -92,3 +92,74 @@ function Read-LabSettings {
     if (-not $settings.ContainsKey('subscription_id') -or -not $settings.ContainsKey('suffix')) { throw 'Explicit subscription_id and suffix are required.' }
     return $settings
 }
+
+
+# This repository URL is also hard-coded in the Jenkins SCM configuration.
+function Assert-LabPublishedSource {
+    $sourceRef = & git -C $script:LabRoot rev-parse HEAD
+    if ($LASTEXITCODE -ne 0 -or $sourceRef -notmatch '^[0-9a-f]{40}$') {
+        throw 'Run from a Git checkout with a committed Jenkins pipeline.'
+    }
+    $dirty = & git -C $script:LabRoot status --porcelain
+    if ($LASTEXITCODE -ne 0 -or $dirty) { throw 'Commit and push all working tree changes before -Apply.' }
+    $remote = & git -C $script:LabRoot remote get-url origin
+    if ($LASTEXITCODE -ne 0 -or $remote -notmatch '^(https://github[.]com/|git@github[.]com:)JeanneBM/devops-platform-lab-azure([.]git)?$') {
+        throw 'origin must point to JeanneBM/devops-platform-lab-azure, the Jenkins SCM repository.'
+    }
+    Invoke-LabNative 'git' @('-C', $script:LabRoot, 'fetch', '--prune', 'origin', '+refs/heads/*:refs/remotes/origin/*')
+    $published = & git -C $script:LabRoot branch -r --contains $sourceRef --list 'origin/*'
+    if ($LASTEXITCODE -ne 0 -or -not $published) { throw 'Push HEAD to a branch on origin before -Apply.' }
+    return "$sourceRef".Trim()
+}
+
+function Wait-LabCheck {
+    param(
+        [Parameter(Mandatory)][scriptblock]$Check,
+        [Parameter(Mandatory)][string]$Description,
+        [ValidateRange(0, 3600)][int]$TimeoutSeconds = 600,
+        [ValidateRange(1, 60)][int]$IntervalSeconds = 15
+    )
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    do {
+        if (& $Check) { return }
+        if ([DateTime]::UtcNow -ge $deadline) { throw "Timed out: $Description." }
+        Write-Host "Waiting: $Description"
+        Start-Sleep -Seconds $IntervalSeconds
+    } while ($true)
+}
+
+function Wait-LabClusterAccess {
+    param([string]$Kubeconfig)
+    Wait-LabCheck -Description 'AKS operator RBAC propagation (up to 10 minutes)' -Check {
+        $answer = & kubectl --kubeconfig $Kubeconfig --request-timeout=15s auth can-i create namespaces --all-namespaces 2>$null
+        return ($LASTEXITCODE -eq 0 -and ($answer -join '').Trim() -eq 'yes')
+    }
+}
+
+function Wait-LabAcrAccess {
+    param([string]$Subscription, [string]$ResourceGroup, [string]$Cluster, [string]$Registry)
+    # check-acr creates its own kubeconfig; the lab kubeconfig conversion does
+    # not reach it. kubelogin supports AAD_LOGIN_METHOD for this child process.
+    $previousLoginMethod = [Environment]::GetEnvironmentVariable('AAD_LOGIN_METHOD', 'Process')
+    try {
+        $env:AAD_LOGIN_METHOD = 'azurecli'
+        Wait-LabCheck -Description 'AKS kubelet access to ACR (up to 10 minutes plus an in-flight diagnostic)' -Check {
+            & az aks check-acr --subscription $Subscription --resource-group $ResourceGroup --name $Cluster --acr $Registry --only-show-errors | Out-Host
+            return ($LASTEXITCODE -eq 0)
+        }
+    } finally {
+        if ($null -eq $previousLoginMethod) {
+            Remove-Item Env:AAD_LOGIN_METHOD -ErrorAction SilentlyContinue
+        } else {
+            [Environment]::SetEnvironmentVariable('AAD_LOGIN_METHOD', $previousLoginMethod, 'Process')
+        }
+    }
+}
+
+function Wait-LabGroupDeleted {
+    param([string]$Subscription, [string]$Group)
+    Wait-LabCheck -Description "resource group deletion: $Group (up to 5 minutes)" -TimeoutSeconds 300 -Check {
+        $exists = & az group exists --subscription $Subscription --name $Group --output tsv
+        return ($LASTEXITCODE -eq 0 -and ($exists -join '').Trim() -eq 'false')
+    }
+}

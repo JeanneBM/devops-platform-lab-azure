@@ -6,16 +6,27 @@ $root = Split-Path $PSScriptRoot -Parent
 $temp = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString())
 $global:LabCalls = @()
 $global:FailLabPlan = $false
+$global:FailLabApply = $false
+$global:FailLabOutput = $false
 function global:az { $global:LASTEXITCODE = 0; if ($args -contains 'group' -and $args -contains 'exists') { 'false' } }
 function global:docker { $global:LASTEXITCODE = 0 }
 function global:kubectl { $global:LASTEXITCODE = 0; 'statefulset.apps/jenkins' }
 function global:kubelogin { $global:LASTEXITCODE = 0 }
 function global:helm { $global:LASTEXITCODE = 0; 'v3.17.3' }
-function global:git { $global:LASTEXITCODE = 0; '1111111111111111111111111111111111111111' }
+function global:git {
+    $global:LASTEXITCODE = 0
+    if ($args -contains 'status') { return }
+    if ($args -contains 'get-url') { return 'https://github.com/JeanneBM/devops-platform-lab-azure.git' }
+    if ($args -contains 'fetch') { return }
+    if ($args -contains 'branch') { return 'origin/main' }
+    '1111111111111111111111111111111111111111'
+}
 function global:terraform {
     $global:LabCalls += ,@($args)
     $global:LASTEXITCODE = 0
     if ($global:FailLabPlan -and $args -contains 'plan') { $global:LASTEXITCODE = 1 }
+    if ($global:FailLabApply -and $args -contains 'apply') { $global:LASTEXITCODE = 1 }
+    if ($global:FailLabOutput -and $args -contains 'output') { $global:LASTEXITCODE = 1 }
 }
 function Assert-Lab([bool]$Condition, [string]$Message) {
     if (-not $Condition) { throw $Message }
@@ -39,6 +50,23 @@ try {
     Assert-Lab (@($global:LabCalls | Where-Object { $_ -contains 'plan' }).Count -eq 1) 'Expected the mock plan itself to be reached.'
     Assert-Lab (@($global:LabCalls | Where-Object { $_ -contains 'apply' }).Count -eq 0) 'Failed plan was applied!'
     $global:FailLabPlan = $false
+
+    # A partially failed apply must retain its error and show the cleanup command.
+    Set-Content (Join-Path $temp 'scripts/Get-LabCostEstimate.ps1') 'param($Location, $NodeSize); @{ estimated = 0 }'
+    $global:FailLabApply = $true
+    $warnings = @()
+    $caught = $false
+    try { & $start -ConfigFile $config -Apply -WarningVariable warnings } catch { $caught = $_ -match 'terraform failed' }
+    Assert-Lab $caught 'Apply failure was swallowed.'
+    Assert-Lab (($warnings -join ' ') -match 'Stop-Lab.ps1') 'Apply failure did not print cleanup instructions.'
+    $global:FailLabApply = $false
+    $global:FailLabOutput = $true
+    $warnings = @()
+    $caught = $false
+    try { & $start -ConfigFile $config -Apply -WarningVariable warnings } catch { $caught = $_ -match 'terraform failed' }
+    Assert-Lab $caught 'Post-apply failure was swallowed.'
+    Assert-Lab (($warnings -join ' ') -match 'Stop-Lab.ps1') 'Post-apply failure did not print cleanup instructions.'
+    $global:FailLabOutput = $false
 
     $global:LabCalls = @()
     $caught = $false
@@ -64,5 +92,6 @@ try {
 } finally {
     Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item function:az, function:terraform, function:docker, function:kubectl, function:kubelogin, function:helm, function:git -ErrorAction SilentlyContinue
-    Remove-Variable LabCalls, FailLabPlan -Scope Global -ErrorAction SilentlyContinue
+    Remove-Variable LabCalls, FailLabPlan, FailLabApply, FailLabOutput -Scope Global -ErrorAction SilentlyContinue
 }
+
