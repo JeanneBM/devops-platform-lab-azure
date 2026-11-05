@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '../scripts/Common.ps1')
 function Assert-Test($Condition, $Message) { if (-not $Condition) { throw $Message } }
 $global:Checks = 0
+$originalLoginMethod = [Environment]::GetEnvironmentVariable('AAD_LOGIN_METHOD', 'Process')
 function global:Start-Sleep { param($Seconds) }
 try {
     Wait-LabCheck -Description 'eventual success' -Check { $global:Checks++; return ($global:Checks -eq 3) }
@@ -22,14 +23,34 @@ try {
     function global:az {
         $global:Checks++
         if ($args -contains 'check-acr') {
+            Assert-Test ($env:AAD_LOGIN_METHOD -eq 'azurecli') 'ACR diagnostic did not inherit Azure CLI authentication.'
             $global:LASTEXITCODE = $(if ($global:Checks -eq 1) { 1 } else { 0 })
         } else {
             $global:LASTEXITCODE = 0
             if ($global:Checks -eq 1) { 'true' } else { 'false' }
         }
     }
+    $env:AAD_LOGIN_METHOD = 'devicecode'
     Wait-LabAcrAccess -Subscription fake -ResourceGroup fake -Cluster fake -Registry fake
     Assert-Test ($global:Checks -eq 2) 'Failed ACR diagnostic was not retried.'
+    Assert-Test ($env:AAD_LOGIN_METHOD -eq 'devicecode') 'Caller login method was not restored after success.'
+    [Environment]::SetEnvironmentVariable('AAD_LOGIN_METHOD', $null, 'Process')
+    Wait-LabAcrAccess -Subscription fake -ResourceGroup fake -Cluster fake -Registry fake
+    Assert-Test ($null -eq [Environment]::GetEnvironmentVariable('AAD_LOGIN_METHOD', 'Process')) 'Absent login override was not restored.'
+    $env:AAD_LOGIN_METHOD = 'interactive'
+    function global:az {
+        Assert-Test ($env:AAD_LOGIN_METHOD -eq 'azurecli') 'ACR exception path did not inherit Azure CLI authentication.'
+        throw 'simulated diagnostic failure'
+    }
+    $caught = $false
+    try { Wait-LabAcrAccess -Subscription fake -ResourceGroup fake -Cluster fake -Registry fake } catch { $caught = $_ -match 'simulated diagnostic failure' }
+    Assert-Test $caught 'Diagnostic exception was swallowed.'
+    Assert-Test ($env:AAD_LOGIN_METHOD -eq 'interactive') 'Caller login method was not restored after failure.'
+    function global:az {
+        $global:Checks++
+        $global:LASTEXITCODE = 0
+        if ($global:Checks -eq 1) { 'true' } else { 'false' }
+    }
     $global:Checks = 0
     Wait-LabGroupDeleted -Subscription fake -Group fake
     Assert-Test ($global:Checks -eq 2) 'Pending group deletion was not retried.'
@@ -53,6 +74,7 @@ try {
     }
     Write-Host 'Readiness and Git preflight tests passed (no network).'
 } finally {
+    [Environment]::SetEnvironmentVariable('AAD_LOGIN_METHOD', $originalLoginMethod, 'Process')
     Remove-Item function:Start-Sleep, function:kubectl, function:az, function:git -ErrorAction SilentlyContinue
     Remove-Variable Checks, Dirty, Published -Scope Global -ErrorAction SilentlyContinue
 }

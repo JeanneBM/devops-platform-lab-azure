@@ -138,9 +138,17 @@ function Wait-LabClusterAccess {
 
 function Wait-LabAcrAccess {
     param([string]$Subscription, [string]$ResourceGroup, [string]$Cluster, [string]$Registry)
-    Wait-LabCheck -Description 'AKS kubelet access to ACR (up to 10 minutes plus an in-flight diagnostic)' -Check {
-        & az aks check-acr --subscription $Subscription --resource-group $ResourceGroup --name $Cluster --acr $Registry --only-show-errors | Out-Host
-        return ($LASTEXITCODE -eq 0)
+    # check-acr creates its own kubeconfig; the lab kubeconfig conversion does
+    # not reach it. kubelogin supports AAD_LOGIN_METHOD for this child process.
+    $previousLoginMethod = [Environment]::GetEnvironmentVariable('AAD_LOGIN_METHOD', 'Process')
+    try {
+        $env:AAD_LOGIN_METHOD = 'azurecli'
+        Wait-LabCheck -Description 'AKS kubelet access to ACR (up to 10 minutes plus an in-flight diagnostic)' -Check {
+            & az aks check-acr --subscription $Subscription --resource-group $ResourceGroup --name $Cluster --acr $Registry --only-show-errors | Out-Host
+            return ($LASTEXITCODE -eq 0)
+        }
+    } finally {
+        [Environment]::SetEnvironmentVariable('AAD_LOGIN_METHOD', $previousLoginMethod, 'Process')
     }
 }
 
