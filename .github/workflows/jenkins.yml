@@ -12,8 +12,8 @@ jobs:
       # Jenkins fetches published branch commits, not GitHub's synthetic PR merge.
       LAB_SOURCE_REF: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: azure/setup-helm@v4.3.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
         with:
           version: v3.17.3
       - name: Install kind
@@ -41,7 +41,7 @@ jobs:
         shell: pwsh
         run: |
           ./scripts/Test-Jenkins.ps1 -Kubeconfig (Join-Path $env:RUNNER_TEMP 'jenkins.kubeconfig') -PluginExport (Join-Path $env:RUNNER_TEMP 'jenkins-plugins.txt')
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: jenkins-plugins
           path: ${{ runner.temp }}/jenkins-plugins.txt
