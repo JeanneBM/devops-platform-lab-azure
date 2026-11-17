@@ -22,11 +22,32 @@ if (-not $AdminSecretName) { $AdminSecretName = Get-LabJenkinsAdminSecret $kube 
 $extra = @()
 if ($ExistingClaim) { $extra += @('--set-string', "persistence.existingClaim=$ExistingClaim") }
 if ($AdminSecretName -and $AdminSecretName -ne 'jenkins') { $extra += @('--set-string', "controller.admin.existingSecret=$AdminSecretName", '--set', 'controller.admin.createSecret=false') }
-Invoke-LabNative 'helm' (@('upgrade', '--install', 'jenkins', 'jenkinsci/jenkins',
-    '--version', '5.10.9', '--kubeconfig', $kube, '--namespace', 'jenkins',
-    '--values', (Join-Path $script:LabRoot 'helm-values/jenkins.yaml'),
-    '--set-string', "controller.containerEnv[0].value=$SourceRef",
-    '--set-string', "persistence.storageClass=$StorageClass",
-    '--set-file', "controller.initScripts.lab-job=$(Join-Path $script:LabRoot 'jenkins/init-job.groovy')",
-    '--atomic', '--wait', '--timeout', '15m', '--history-max', '5') + $extra)
+$chartVersion = '5.10.9'
+$downloadDir = New-Item -ItemType Directory -Path (Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString()))
+$chartPath = Join-Path $downloadDir.FullName "jenkins-$chartVersion.tgz"
+try {
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        try {
+            Invoke-LabNative 'helm' @('pull', 'jenkinsci/jenkins', '--version', $chartVersion,
+                '--destination', $downloadDir.FullName)
+            break
+        }
+        catch {
+            if ($attempt -eq 3) { throw }
+            if (Test-Path -LiteralPath $chartPath) { Remove-Item -LiteralPath $chartPath }
+            Write-Warning "Jenkins Helm chart download failed (attempt $attempt of 3). Retrying."
+            Start-Sleep -Seconds (5 * $attempt)
+        }
+    }
+    Invoke-LabNative 'helm' (@('upgrade', '--install', 'jenkins', $chartPath,
+        '--kubeconfig', $kube, '--namespace', 'jenkins',
+        '--values', (Join-Path $script:LabRoot 'helm-values/jenkins.yaml'),
+        '--set-string', "controller.containerEnv[0].value=$SourceRef",
+        '--set-string', "persistence.storageClass=$StorageClass",
+        '--set-file', "controller.initScripts.lab-job=$(Join-Path $script:LabRoot 'jenkins/init-job.groovy')",
+        '--atomic', '--wait', '--timeout', '15m', '--history-max', '5') + $extra)
+}
+finally {
+    Remove-Item -LiteralPath $downloadDir.FullName -Recurse -Force
+}
 Write-Host 'Jenkins installed. No automatic job trigger on startup; run Test-Jenkins.ps1 explicitly.'
