@@ -3,7 +3,7 @@
 An ephemeral Azure learning lab operated from a local PowerShell terminal.
 Its counterpart is [devops-platform-lab-local](https://github.com/JeanneBM/devops-platform-lab-local).
 
-**Status: Stages 1–6 implemented in code. No Azure deployment has been run.**
+**Status: L1 validated on kind on 17 November 2026.** See the [CI evidence](evidence/2026-11-17-L1.md). The first Azure deployment remains open.
 CI checks Terraform/PowerShell, Helm applications, Jenkins dynamic builds and recovery,
 plus metrics/logs/dashboards and outage alert recovery in kind. These checks do not prove Azure
 quota, regional capacity, authentication, billing, resource creation or destruction.
