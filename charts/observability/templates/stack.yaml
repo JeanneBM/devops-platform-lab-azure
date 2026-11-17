@@ -723,7 +723,7 @@
           {
             "name": "data",
             "emptyDir": {
-              "sizeLimit": "256Mi"
+              "sizeLimit": "1Gi"
             }
           }
         ]
