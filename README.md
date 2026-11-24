@@ -8,6 +8,34 @@ CI checks Terraform/PowerShell, Helm applications, Jenkins dynamic builds and re
 plus metrics/logs/dashboards and outage alert recovery in kind. These checks do not prove Azure
 quota, regional capacity, authentication, billing, resource creation or destruction.
 
+## Architecture
+
+Implemented Azure topology; live Azure lifecycle validation is pending. CI exercises applications, Jenkins and observability on kind. Operator scripts provision and verify the Azure lab when explicitly applied.
+
+```mermaid
+flowchart TD
+  OP["Local PowerShell lifecycle scripts"] --> TF["Terraform: AKS, ACR and scoped access"]
+  OP --> BUILD["Docker builds and Helm deployment"]
+  subgraph AZ["Azure lab: live verification pending"]
+    ACR[("ACR Basic")]
+    subgraph AKS["AKS: two Linux nodes"]
+      APPS["Python and Java applications"]
+      JENKINS["Jenkins controller"] --> AGENTS["Ephemeral Kubernetes build agents"]
+      JENKINS --> PVC[("Managed disk PVC")]
+      METRICS["Prometheus and HTTP probes"] --> GRAF["Grafana dashboards and alerts"]
+      LOGS["Alloy and Loki"] --> GRAF
+      APPS --> METRICS
+      APPS --> LOGS
+    end
+    ACR -->|"kubelet AcrPull"| APPS
+  end
+  TF --> AKS
+  TF --> ACR
+  BUILD -->|"push"| ACR
+  BUILD -->|"Helm"| AKS
+  JENKINS -->|"offline export and restore"| BACKUP[("Local backup and separate controller key")]
+```
+
 ## Stage 1: what this code prepares
 
 | Component | Configuration |
