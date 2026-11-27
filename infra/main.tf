@@ -51,6 +51,11 @@ resource "azurerm_kubernetes_cluster" "lab" {
     os_disk_type    = "Managed"
     max_pods        = 30
     tags            = local.tags
+
+    # Match the upgrade setting returned by Azure after cluster creation.
+    upgrade_settings {
+      max_surge = "10%"
+    }
   }
 
   azure_active_directory_role_based_access_control {

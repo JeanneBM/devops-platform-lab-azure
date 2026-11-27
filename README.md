@@ -3,20 +3,35 @@
 An ephemeral Azure learning lab operated from a local PowerShell terminal.
 Its counterpart is [devops-platform-lab-local](https://github.com/JeanneBM/devops-platform-lab-local).
 
-**Status: L1 validated on kind on 17 November 2026.** See the [CI evidence](evidence/2026-11-17-L1.md). The first Azure deployment remains open.
+**Status: L1 application validation on kind on 17 November 2026.** See the [CI evidence](evidence/2026-11-17-L1.md).
+**Azure infrastructure lifecycle verified on 27 November 2026:** seven resources
+created and destroyed, AKS/ACR provisioning and four scoped role assignments
+observed, and both resource groups confirmed absent. The post-apply plan detected
+one upgrade-settings difference; zero-diff convergence remains unverified.
+See the [live infrastructure report](evidence/2026-11-27-terraform-live.md),
+[redacted terminal capture](evidence/2026-11-27-terraform-live.log) and its
+[SHA-256 manifest](evidence/2026-11-27-terraform-live.log.sha256).
+**Terraform plan verified on Windows on 27 November 2026:** authenticated
+`init`, `validate` and `plan` completed with **7 to add, 0 to change, 0 to destroy**.
+See the [planning evidence and its limits](evidence/2026-11-27-terraform-plan.md).
+The local lock diff was reviewed: one additional package checksum, with AzureRM
+remaining at 4.45.1. Azure application deployment and full scripted lifecycle verification remain open.
 CI checks Terraform/PowerShell, Helm applications, Jenkins dynamic builds and recovery,
 plus metrics/logs/dashboards and outage alert recovery in kind. These checks do not prove Azure
 quota, regional capacity, authentication, billing, resource creation or destruction.
 
 ## Architecture
 
-Implemented Azure topology; live Azure lifecycle validation is pending. CI exercises applications, Jenkins and observability on kind. Operator scripts provision and verify the Azure lab when explicitly applied.
+Azure infrastructure creation and cleanup have been verified; live application,
+Jenkins and observability verification remains pending. CI exercises these
+workloads on kind. Operator scripts provision and verify the full Azure lab when
+explicitly applied.
 
 ```mermaid
 flowchart TD
   OP["Local PowerShell lifecycle scripts"] --> TF["Terraform: AKS, ACR and scoped access"]
   OP --> BUILD["Docker builds and Helm deployment"]
-  subgraph AZ["Azure lab: live verification pending"]
+  subgraph AZ["Azure infrastructure verified; workloads pending"]
     ACR[("ACR Basic")]
     subgraph AKS["AKS: two Linux nodes"]
       APPS["Python and Java applications"]
@@ -89,7 +104,7 @@ pwsh ./scripts/Stop-Lab.ps1 -Destroy
 
 | Stage | Deliverable and exercise | Status |
 | --- | --- | --- |
-| 1 | Terraform AKS/ACR, local lifecycle scripts; inspect identities and RBAC | Code prepared; live verification pending |
+| 1 | Terraform AKS/ACR, local lifecycle scripts; inspect identities and RBAC | Azure infrastructure create, ARM/RBAC inspection and destroy verified 27 November; zero-diff convergence and Kubernetes operator access pending |
 | 2 | Reused Python/Java source; multistage images; Helm releases, ACR push; health and rollback exercise | Code prepared; Azure verification pending |
 | 3 | Jenkins Helm/JCasC, pinned direct plugins, shared library, dynamic agents; namespace-scoped RBAC and denied-operation exercise | Code prepared; Azure verification pending |
 | 4 | Offline external backup, separate key and new-PVC recovery; successful post-restore build | Implemented; kind verified, Azure pending |

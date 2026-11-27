@@ -1,0 +1,482 @@
+OPERATOR@WORKSTATION MINGW64 ~/devops-platform-lab-azure (main)
+$ (
+  set -euo pipefail
+  export MSYS_NO_PATHCONV=1
+  cd ~/devops-platform-lab-azure
+
+  [[ -f infra/lab.tfvars && -f infra/create.tfplan ]] || exit 1
+  [[ ! -f infra/terraform.tfstate ]] || {
+    printf 'STOP: istnieje stan Terraform.\n'
+    exit 1
+  }
+  [[ "$(terraform -chdir=infra workspace show | tr -d '\r')" == default ]] || exit 1
+
+  tf_session_sub=$(sed -nE 's/^[[:space:]]*subscription_id[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' infra/lab.tfvars | tr -d '\r')
+  [[ "$tf_session_sub" =~ ^[a-fA-F0-9-]{36}$ ]] || exit 1
+  tf_session_rg=rg-devopslab-LAB_SUFFIX
+  tf_session_nodes=rg-devopslab-LAB_SUFFIX-nodes
+
+  for tf_session_group in "$tf_session_rg" "$tf_session_nodes"; do
+    tf_session_exists=$(az group exists --subscription "$tf_session_sub" --name "$tf_session_group" -o tsv | tr -d '\r' | tr '[:upper:]' '[:lower:]')
+    [[ "$tf_session_exists" == false ]] || {
+      printf 'STOP: grupa juz istnieje: %s\n' "$tf_session_group"
+) printf 'IDEMPOTENCJA OK: brak zmian.\n'e -var-file=lab.tfvars -detailed-exitco
+2026-11-27T15:59:49+01:00
+
+APPLY
+azurerm_resource_group.lab: Creating...
+azurerm_resource_group.lab: Still creating... [10s elapsed]
+azurerm_resource_group.lab: Creation complete after 16s [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX]
+azurerm_container_registry.lab: Creating...
+azurerm_kubernetes_cluster.lab: Creating...
+azurerm_container_registry.lab: Still creating... [10s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [10s elapsed]
+azurerm_container_registry.lab: Still creating... [20s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [20s elapsed]
+azurerm_container_registry.lab: Creation complete after 25s [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr]
+azurerm_role_assignment.operator_push: Creating...
+azurerm_kubernetes_cluster.lab: Still creating... [30s elapsed]
+azurerm_role_assignment.operator_push: Still creating... [10s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [40s elapsed]
+azurerm_role_assignment.operator_push: Still creating... [20s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [50s elapsed]
+azurerm_role_assignment.operator_push: Still creating... [30s elapsed]
+azurerm_role_assignment.operator_push: Creation complete after 30s [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr/providers/Microsoft.Authorization/roleAssignments/<UUID_01>]
+azurerm_kubernetes_cluster.lab: Still creating... [1m0s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [1m10s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [1m20s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [1m30s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [1m40s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [1m50s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [2m0s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [2m10s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [2m20s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [2m30s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [2m40s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [2m50s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [3m0s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [3m10s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [3m20s elapsed]
+azurerm_kubernetes_cluster.lab: Still creating... [3m30s elapsed]
+azurerm_kubernetes_cluster.lab: Creation complete after 3m35s [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX]
+azurerm_role_assignment.operator_credentials: Creating...
+azurerm_role_assignment.pull: Creating...
+azurerm_role_assignment.operator: Creating...
+azurerm_role_assignment.pull: Still creating... [10s elapsed]
+azurerm_role_assignment.operator_credentials: Still creating... [10s elapsed]
+azurerm_role_assignment.operator: Still creating... [10s elapsed]
+azurerm_role_assignment.operator_credentials: Still creating... [20s elapsed]
+azurerm_role_assignment.pull: Still creating... [20s elapsed]
+azurerm_role_assignment.operator: Still creating... [20s elapsed]
+azurerm_role_assignment.pull: Creation complete after 29s [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr/providers/Microsoft.Authorization/roleAssignments/<UUID_02>]
+azurerm_role_assignment.operator_credentials: Creation complete after 29s [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX/providers/Microsoft.Authorization/roleAssignments/<UUID_03>]
+azurerm_role_assignment.operator: Still creating... [30s elapsed]
+azurerm_role_assignment.operator: Creation complete after 31s [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX/providers/Microsoft.Authorization/roleAssignments/<UUID_04>]
+
+Apply complete! Resources: 7 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+acr_login_server = "devopslabLAB_SUFFIXacr.azurecr.io"
+acr_name = "devopslabLAB_SUFFIXacr"
+cluster_name = "aks-devopslab-LAB_SUFFIX"
+node_resource_group_name = "rg-devopslab-LAB_SUFFIX-nodes"
+oidc_issuer_url = "https://polandcentral.oic.prod-aks.azure.com/<UUID_05>/<UUID_06>/"
+resource_group_name = "rg-devopslab-LAB_SUFFIX"
+subscription_id = "<UUID_07>"
+
+AKS / ACR
+State      Nodes    VM                AzureRBAC    WorkloadIdentity
+---------  -------  ----------------  -----------  ------------------
+Succeeded  2        Standard_D4as_v6  True         True
+State      SKU    AdminEnabled
+---------  -----  --------------
+Succeeded  Basic  False
+
+PRZYPISANIA RBAC
+Role                                         Scope
+-------------------------------------------  --------------------------------------------------------------------------------------------------------------------------------------------------------------------
+AcrPush                                      /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr
+AcrPull                                      /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr
+Azure Kubernetes Service Cluster User Role   /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX
+Azure Kubernetes Service RBAC Cluster Admin  /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX
+
+PLAN PO APPLY
+data.azurerm_client_config.current: Reading...
+azurerm_resource_group.lab: Refreshing state... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX]
+data.azurerm_client_config.current: Read complete after 0s [id=<REDACTED_CLIENT_CONFIG_ID>]
+azurerm_container_registry.lab: Refreshing state... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr]
+azurerm_kubernetes_cluster.lab: Refreshing state... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX]
+azurerm_role_assignment.operator_push: Refreshing state... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr/providers/Microsoft.Authorization/roleAssignments/<UUID_01>]
+azurerm_role_assignment.operator: Refreshing state... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX/providers/Microsoft.Authorization/roleAssignments/<UUID_04>]
+azurerm_role_assignment.pull: Refreshing state... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr/providers/Microsoft.Authorization/roleAssignments/<UUID_02>]
+azurerm_role_assignment.operator_credentials: Refreshing state... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX/providers/Microsoft.Authorization/roleAssignments/<UUID_03>]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # azurerm_kubernetes_cluster.lab will be updated in-place
+  ~ resource "azurerm_kubernetes_cluster" "lab" {
+        id                                  = "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX"
+        name                                = "aks-devopslab-LAB_SUFFIX"
+        tags                                = {
+            "environment" = "learning"
+            "lifecycle"   = "ephemeral"
+            "managed_by"  = "terraform"
+            "project"     = "devops-platform-lab-azure"
+        }
+        # (32 unchanged attributes hidden)
+
+      ~ default_node_pool {
+            name                          = "system"
+            tags                          = {
+                "environment" = "learning"
+                "lifecycle"   = "ephemeral"
+                "managed_by"  = "terraform"
+                "project"     = "devops-platform-lab-azure"
+            }
+            # (31 unchanged attributes hidden)
+
+          - upgrade_settings {
+              - drain_timeout_in_minutes      = 0 -> null
+              - max_surge                     = "10%" -> null
+              - node_soak_duration_in_minutes = 0 -> null
+            }
+        }
+
+        # (7 unchanged blocks hidden)
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+─────────────────────────────────────────────────────────────────────────────
+
+Note: You didn't use the -out option to save this plan, so Terraform can't
+guarantee to take exactly these actions if you run "terraform apply" now.
+
+DESTROY
+data.azurerm_client_config.current: Reading...
+azurerm_resource_group.lab: Refreshing state... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX]
+data.azurerm_client_config.current: Read complete after 0s [id=<REDACTED_CLIENT_CONFIG_ID>]
+azurerm_container_registry.lab: Refreshing state... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr]
+azurerm_kubernetes_cluster.lab: Refreshing state... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX]
+azurerm_role_assignment.operator_push: Refreshing state... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr/providers/Microsoft.Authorization/roleAssignments/<UUID_01>]
+azurerm_role_assignment.pull: Refreshing state... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr/providers/Microsoft.Authorization/roleAssignments/<UUID_02>]
+azurerm_role_assignment.operator: Refreshing state... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX/providers/Microsoft.Authorization/roleAssignments/<UUID_04>]
+azurerm_role_assignment.operator_credentials: Refreshing state... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX/providers/Microsoft.Authorization/roleAssignments/<UUID_03>]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  - destroy
+
+Terraform will perform the following actions:
+
+  # azurerm_container_registry.lab will be destroyed
+  - resource "azurerm_container_registry" "lab" {
+      - admin_enabled                 = false -> null
+      - anonymous_pull_enabled        = false -> null
+      - data_endpoint_enabled         = false -> null
+      - data_endpoint_host_names      = [] -> null
+      - encryption                    = [] -> null
+      - export_policy_enabled         = true -> null
+      - id                            = "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr" -> null
+      - location                      = "polandcentral" -> null
+      - login_server                  = "devopslabLAB_SUFFIXacr.azurecr.io" -> null
+      - name                          = "devopslabLAB_SUFFIXacr" -> null
+      - network_rule_bypass_option    = "AzureServices" -> null
+      - network_rule_set              = [] -> null
+      - public_network_access_enabled = true -> null
+      - quarantine_policy_enabled     = false -> null
+      - resource_group_name           = "rg-devopslab-LAB_SUFFIX" -> null
+      - retention_policy_in_days      = 0 -> null
+      - sku                           = "Basic" -> null
+      - tags                          = {
+          - "environment" = "learning"
+          - "lifecycle"   = "ephemeral"
+          - "managed_by"  = "terraform"
+          - "project"     = "devops-platform-lab-azure"
+        } -> null
+      - trust_policy_enabled          = false -> null
+      - zone_redundancy_enabled       = false -> null
+        # (2 unchanged attributes hidden)
+    }
+
+  # azurerm_kubernetes_cluster.lab will be destroyed
+  - resource "azurerm_kubernetes_cluster" "lab" {
+      - cost_analysis_enabled               = false -> null
+      - current_kubernetes_version          = "1.37.1" -> null
+      - custom_ca_trust_certificates_base64 = [] -> null
+      - dns_prefix                          = "devopslab-LAB_SUFFIX" -> null
+      - fqdn                                = "devopslab-LAB_SUFFIX-DNS_SUFFIX.hcp.polandcentral.azmk8s.io" -> null
+      - id                                  = "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX" -> null
+      - kube_admin_config                   = (sensitive value) -> null
+      - kube_config                         = (sensitive value) -> null
+      - kube_config_raw                     = (sensitive value) -> null
+      - kubernetes_version                  = "1.37.1" -> null
+      - local_account_disabled              = true -> null
+      - location                            = "polandcentral" -> null
+      - name                                = "aks-devopslab-LAB_SUFFIX" -> null
+      - node_os_upgrade_channel             = "NodeImage" -> null
+      - node_resource_group                 = "rg-devopslab-LAB_SUFFIX-nodes" -> null
+      - node_resource_group_id              = "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX-nodes" -> null
+      - oidc_issuer_enabled                 = true -> null
+      - oidc_issuer_url                     = "https://polandcentral.oic.prod-aks.azure.com/<UUID_05>/<UUID_06>/" -> null
+      - portal_fqdn                         = "devopslab-LAB_SUFFIX-DNS_SUFFIX.portal.hcp.polandcentral.azmk8s.io" -> null
+      - private_cluster_enabled             = false -> null
+      - private_cluster_public_fqdn_enabled = false -> null
+      - resource_group_name                 = "rg-devopslab-LAB_SUFFIX" -> null
+      - role_based_access_control_enabled   = true -> null
+      - run_command_enabled                 = true -> null
+      - sku_tier                            = "Free" -> null
+      - support_plan                        = "KubernetesOfficial" -> null
+      - tags                                = {
+          - "environment" = "learning"
+          - "lifecycle"   = "ephemeral"
+          - "managed_by"  = "terraform"
+          - "project"     = "devops-platform-lab-azure"
+        } -> null
+      - workload_identity_enabled           = true -> null
+        # (7 unchanged attributes hidden)
+
+      - api_server_access_profile {
+          - authorized_ip_ranges = [
+              - "<OPERATOR_IPV4>/32",
+            ] -> null
+        }
+
+      - azure_active_directory_role_based_access_control {
+          - admin_group_object_ids = [] -> null
+          - azure_rbac_enabled     = true -> null
+          - tenant_id              = "<UUID_05>" -> null
+        }
+
+      - bootstrap_profile {
+          - artifact_source       = "Direct" -> null
+            # (1 unchanged attribute hidden)
+        }
+
+      - default_node_pool {
+          - auto_scaling_enabled          = false -> null
+          - fips_enabled                  = false -> null
+          - host_encryption_enabled       = false -> null
+          - kubelet_disk_type             = "OS" -> null
+          - max_count                     = 0 -> null
+          - max_pods                      = 30 -> null
+          - min_count                     = 0 -> null
+          - name                          = "system" -> null
+          - node_count                    = 2 -> null
+          - node_labels                   = {} -> null
+          - node_public_ip_enabled        = false -> null
+          - only_critical_addons_enabled  = false -> null
+          - orchestrator_version          = "1.37.1" -> null
+          - os_disk_size_gb               = 64 -> null
+          - os_disk_type                  = "Managed" -> null
+          - os_sku                        = "Ubuntu" -> null
+          - scale_down_mode               = "Delete" -> null
+          - tags                          = {
+              - "environment" = "learning"
+              - "lifecycle"   = "ephemeral"
+              - "managed_by"  = "terraform"
+              - "project"     = "devops-platform-lab-azure"
+            } -> null
+          - type                          = "VirtualMachineScaleSets" -> null
+          - ultra_ssd_enabled             = false -> null
+          - vm_size                       = "Standard_D4as_v6" -> null
+          - zones                         = [] -> null
+            # (11 unchanged attributes hidden)
+
+          - upgrade_settings {
+              - drain_timeout_in_minutes      = 0 -> null
+              - max_surge                     = "10%" -> null
+              - node_soak_duration_in_minutes = 0 -> null
+            }
+        }
+
+      - identity {
+          - identity_ids = [] -> null
+          - principal_id = "<UUID_08>" -> null
+          - tenant_id    = "<UUID_05>" -> null
+          - type         = "SystemAssigned" -> null
+        }
+
+      - kubelet_identity {
+          - client_id                 = "<UUID_09>" -> null
+          - object_id                 = "<UUID_10>" -> null
+          - user_assigned_identity_id = "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX-nodes/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aks-devopslab-LAB_SUFFIX-agentpool" -> null
+        }
+
+      - network_profile {
+          - dns_service_ip      = "10.0.0.10" -> null
+          - ip_versions         = [
+              - "IPv4",
+            ] -> null
+          - load_balancer_sku   = "standard" -> null
+          - network_data_plane  = "azure" -> null
+          - network_plugin      = "azure" -> null
+          - network_plugin_mode = "overlay" -> null
+          - network_policy      = "azure" -> null
+          - outbound_type       = "loadBalancer" -> null
+          - pod_cidr            = "10.244.0.0/16" -> null
+          - pod_cidrs           = [
+              - "10.244.0.0/16",
+            ] -> null
+          - service_cidr        = "10.0.0.0/16" -> null
+          - service_cidrs       = [
+              - "10.0.0.0/16",
+            ] -> null
+            # (1 unchanged attribute hidden)
+
+          - load_balancer_profile {
+              - backend_pool_type           = "NodeIPConfiguration" -> null
+              - effective_outbound_ips      = [
+                  - "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX-nodes/providers/Microsoft.Network/publicIPAddresses/<UUID_11>",
+                ] -> null
+              - idle_timeout_in_minutes     = 0 -> null
+              - managed_outbound_ip_count   = 1 -> null
+              - managed_outbound_ipv6_count = 0 -> null
+              - outbound_ip_address_ids     = [] -> null
+              - outbound_ip_prefix_ids      = [] -> null
+              - outbound_ports_allocated    = 0 -> null
+            }
+        }
+
+      - windows_profile {
+          - admin_username = "azureuser" -> null
+            # (2 unchanged attributes hidden)
+        }
+    }
+
+  # azurerm_resource_group.lab will be destroyed
+  - resource "azurerm_resource_group" "lab" {
+      - id         = "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX" -> null
+      - location   = "polandcentral" -> null
+      - name       = "rg-devopslab-LAB_SUFFIX" -> null
+      - tags       = {
+          - "environment" = "learning"
+          - "lifecycle"   = "ephemeral"
+          - "managed_by"  = "terraform"
+          - "project"     = "devops-platform-lab-azure"
+        } -> null
+        # (1 unchanged attribute hidden)
+    }
+
+  # azurerm_role_assignment.operator will be destroyed
+  - resource "azurerm_role_assignment" "operator" {
+      - id                                     = "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX/providers/Microsoft.Authorization/roleAssignments/<UUID_04>" -> null
+      - name                                   = "<UUID_04>" -> null
+      - principal_id                           = "<UUID_12>" -> null
+      - principal_type                         = "User" -> null
+      - role_definition_id                     = "/subscriptions/<SUBSCRIPTION_ID>/providers/Microsoft.Authorization/roleDefinitions/<UUID_13>" -> null
+      - role_definition_name                   = "Azure Kubernetes Service RBAC Cluster Admin" -> null
+      - scope                                  = "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX" -> null
+        # (4 unchanged attributes hidden)
+    }
+
+  # azurerm_role_assignment.operator_credentials will be destroyed
+  - resource "azurerm_role_assignment" "operator_credentials" {
+      - id                                     = "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX/providers/Microsoft.Authorization/roleAssignments/<UUID_03>" -> null
+      - name                                   = "<UUID_03>" -> null
+      - principal_id                           = "<UUID_12>" -> null
+      - principal_type                         = "User" -> null
+      - role_definition_id                     = "/subscriptions/<SUBSCRIPTION_ID>/providers/Microsoft.Authorization/roleDefinitions/<UUID_14>" -> null
+      - role_definition_name                   = "Azure Kubernetes Service Cluster User Role" -> null
+      - scope                                  = "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX" -> null
+        # (4 unchanged attributes hidden)
+    }
+
+  # azurerm_role_assignment.operator_push will be destroyed
+  - resource "azurerm_role_assignment" "operator_push" {
+      - id                                     = "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr/providers/Microsoft.Authorization/roleAssignments/<UUID_01>" -> null
+      - name                                   = "<UUID_01>" -> null
+      - principal_id                           = "<UUID_12>" -> null
+      - principal_type                         = "User" -> null
+      - role_definition_id                     = "/subscriptions/<SUBSCRIPTION_ID>/providers/Microsoft.Authorization/roleDefinitions/<UUID_15>" -> null
+      - role_definition_name                   = "AcrPush" -> null
+      - scope                                  = "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr" -> null
+        # (4 unchanged attributes hidden)
+    }
+
+  # azurerm_role_assignment.pull will be destroyed
+  - resource "azurerm_role_assignment" "pull" {
+      - id                                     = "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr/providers/Microsoft.Authorization/roleAssignments/<UUID_02>" -> null
+      - name                                   = "<UUID_02>" -> null
+      - principal_id                           = "<UUID_10>" -> null
+      - principal_type                         = "ServicePrincipal" -> null
+      - role_definition_id                     = "/subscriptions/<SUBSCRIPTION_ID>/providers/Microsoft.Authorization/roleDefinitions/<UUID_16>" -> null
+      - role_definition_name                   = "AcrPull" -> null
+      - scope                                  = "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr" -> null
+      - skip_service_principal_aad_check       = true -> null
+        # (4 unchanged attributes hidden)
+    }
+
+Plan: 0 to add, 0 to change, 7 to destroy.
+
+Changes to Outputs:
+  - acr_login_server         = "devopslabLAB_SUFFIXacr.azurecr.io" -> null
+  - acr_name                 = "devopslabLAB_SUFFIXacr" -> null
+  - cluster_name             = "aks-devopslab-LAB_SUFFIX" -> null
+  - node_resource_group_name = "rg-devopslab-LAB_SUFFIX-nodes" -> null
+  - oidc_issuer_url          = "https://polandcentral.oic.prod-aks.azure.com/<UUID_05>/<UUID_06>/" -> null
+  - resource_group_name      = "rg-devopslab-LAB_SUFFIX" -> null
+  - subscription_id          = "<UUID_07>" -> null
+azurerm_role_assignment.operator_push: Destroying... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr/providers/Microsoft.Authorization/roleAssignments/<UUID_01>]
+azurerm_role_assignment.operator_credentials: Destroying... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX/providers/Microsoft.Authorization/roleAssignments/<UUID_03>]
+azurerm_role_assignment.operator: Destroying... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX/providers/Microsoft.Authorization/roleAssignments/<UUID_04>]
+azurerm_role_assignment.pull: Destroying... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr/providers/Microsoft.Authorization/roleAssignments/<UUID_02>]
+azurerm_role_assignment.operator_credentials: Destruction complete after 2s
+azurerm_role_assignment.operator: Destruction complete after 2s
+azurerm_role_assignment.pull: Destruction complete after 3s
+azurerm_kubernetes_cluster.lab: Destroying... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerService/managedClusters/aks-devopslab-LAB_SUFFIX]
+azurerm_role_assignment.operator_push: Destruction complete after 3s
+azurerm_container_registry.lab: Destroying... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX/providers/Microsoft.ContainerRegistry/registries/devopslabLAB_SUFFIXacr]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 10s elapsed]
+azurerm_container_registry.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...gistry/registries/devopslabLAB_SUFFIXacr, 10s elapsed]
+azurerm_container_registry.lab: Destruction complete after 11s
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 20s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 30s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 40s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 50s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 1m0s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 1m10s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 1m20s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 1m30s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 1m40s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 1m50s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 2m0s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 2m10s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 2m20s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 2m30s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 2m40s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 2m50s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 3m0s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 3m10s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 3m20s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 3m30s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 3m40s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 3m50s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 4m0s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 4m10s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 4m20s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 4m30s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 4m40s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 4m50s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 5m0s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 5m10s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 5m20s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 5m30s elapsed]
+azurerm_kubernetes_cluster.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...managedClusters/aks-devopslab-LAB_SUFFIX, 5m40s elapsed]
+azurerm_kubernetes_cluster.lab: Destruction complete after 5m49s
+azurerm_resource_group.lab: Destroying... [id=/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-devopslab-LAB_SUFFIX]
+azurerm_resource_group.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...2/resourceGroups/rg-devopslab-LAB_SUFFIX, 10s elapsed]
+azurerm_resource_group.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...2/resourceGroups/rg-devopslab-LAB_SUFFIX, 20s elapsed]
+azurerm_resource_group.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...2/resourceGroups/rg-devopslab-LAB_SUFFIX, 30s elapsed]
+azurerm_resource_group.lab: Still destroying... [id=/subscriptions/<SUBSCRIPTION_ID>...2/resourceGroups/rg-devopslab-LAB_SUFFIX, 40s elapsed]
+azurerm_resource_group.lab: Destruction complete after 47s
+
+Destroy complete! Resources: 7 destroyed.
+CLEANUP VERIFIED: obie grupy usuniete.
+2026-11-27T16:12:12+01:00
+Czas sesji: 13 minut.

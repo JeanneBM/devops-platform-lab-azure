@@ -51,8 +51,10 @@ Copy-Item lab.tfvars.example lab.tfvars
 pwsh ./scripts/Start-Lab.ps1
 ```
 
-Inspect the plan: one AKS cluster, one ACR, one lab resource group and three scoped role
-assignments (including stage 2 operator AcrPush). AKS also creates its managed node resource group and billable network,
+Inspect the plan: one AKS cluster, one ACR, one lab resource group and four scoped role
+assignments: kubelet AcrPull, operator AcrPush, AKS RBAC Cluster Admin and AKS
+Cluster User Role. A fresh state therefore plans seven managed resources.
+AKS also creates its managed node resource group and billable network,
 compute and disk resources. No Log Analytics workspace or application resources
 should appear. Terraform refresh/read calls are real Azure reads, not a simulated plan.
 
@@ -123,7 +125,27 @@ Re-cloning the repo does not restore state or remove existing resources.
 
 ## Verification record
 
-At preparation time: no Azure apply, no real role test, no live destruction test.
+On 27 November 2026, the operator verified authenticated `init`, `validate` and a
+saved plan from Windows using Terraform 1.9.8 and AzureRM 4.45.1. The plan reported
+7 to add, 0 to change and 0 to destroy. See the
+[redacted planning record](../evidence/2026-11-27-terraform-plan.md), including the
+reviewed checksum-only local lock addition. That initial exercise was plan-only.
+
+Later the same day, the operator completed a live infrastructure-only session
+with two `Standard_D4as_v6` nodes: seven resources created, AKS/ACR provisioning
+and four scoped role assignments observed through Azure CLI, seven resources
+destroyed, and both lab resource groups confirmed absent. The session lasted
+12 minutes 23 seconds (rounded up to 13 minutes by the script).
+The post-apply plan detected one difference in the default node pool's
+`upgrade_settings`; it did not pass the zero-diff check. A subsequent local
+configuration change declares `max_surge = "10%"` explicitly, but this change has
+not been applied or verified against a live cluster. See the
+[live evidence and remaining checks](../evidence/2026-11-27-terraform-live.md).
+That report links the redacted uploaded terminal capture and its SHA-256
+manifest, and describes the limits of the captured command text.
+
+Kubernetes node readiness, system-pod health, effective operator permissions and
+application deployment were not exercised in that infrastructure-only session.
 CI validates formatting, provider schema, PowerShell parsing, lifecycle safeguards,
 application tests and Helm deployments in kind without Azure credentials.
 After a future authorized session, record date, commit, region, redacted verification
